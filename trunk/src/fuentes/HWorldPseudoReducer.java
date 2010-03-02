@@ -41,58 +41,51 @@ import org.apache.hadoop.util.LineReader;
 public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritable> {
 
 	private IntWritable result = new IntWritable();
-	private long milis = new java.util.GregorianCalendar().getTimeInMillis();
 	private int crossSize = 2;
-	int tournamentSize = 5;
-	private int numElemProcessed = 0;
-	private static final Log LOG = 
-	    LogFactory.getLog(HWorldPseudoReducer.class.getName());
-	
-
-	/**Cada posicion del array del torneo sera un Hashtable, ya que necesitamos
-	 * almacenar al individuo y su fitness..
-	 */
+	private int tournamentSize = 5;
+	private int numElemProcessed, numPop = 0;
+	private static final Log LOG = LogFactory.getLog(HWorldPseudoReducer.class.getName());
+	//Cada posicion del array del torneo sera un Hashtable, ya que necesitamos almacenar al individuo y su fitness..
 	private Hashtable[]tournArray = new Hashtable [2*tournamentSize]; 
 	private Text[]crossArray = new Text [crossSize];
-	
-	Random r = new Random(milis);
-	Hashtable parameters = new Hashtable();
-
+	private Hashtable parameters = new Hashtable();
 	//Indicamos el fichero de configuracion que debera leer
 	final String HDFS_REDUCER_CONFIGURATION_FILE="/user/hadoop-user/data/reducer_configuration.dat";
+	private Random r = new Random(System.nanoTime());
+
 	
 	@Override
 	protected void setup(Context cont) throws IOException{
 		LOG.info("***********DENTRO DEL SETUP DEL REDUCER**********");
+		FileSystem hdfs = FileSystem.get(new Configuration()); 
+		Path path = new Path(HDFS_REDUCER_CONFIGURATION_FILE);
 		
-			FileSystem hdfs = FileSystem.get(new Configuration()); 
-			Path path = new Path(HDFS_REDUCER_CONFIGURATION_FILE);
+		
+		//Validamos primero el path de entrada antes de leer del fichero
+		if (!hdfs.exists(path))
+		{
+			LOG.info("***********RSETUP:NO EXISTE EL FICHERO**********");
+			throw new IOException("El fichero especificado " +HDFS_REDUCER_CONFIGURATION_FILE + "no existe");
 			
-			
-			//Validamos primero el path de entrada antes de leer del fichero
-			if (!hdfs.exists(path))
-			{
-				LOG.info("***********RSETUP:NO EXISTE EL FICHERO**********");
-				throw new IOException("El fichero especificado " +HDFS_REDUCER_CONFIGURATION_FILE + "no existe");
-				
-			}
-			
-			if (!hdfs.isFile(path))
-			{
-				LOG.info("***********RSETUP: NO ES UN FICHERO VALIDO**********");
-				throw new IOException("El fichero especificado "+HDFS_REDUCER_CONFIGURATION_FILE + "no es un fichero valido");
-			}
- 			
-			FSDataInputStream dis = hdfs.open(path);
-			BufferedReader br = new BufferedReader(new InputStreamReader(dis));
-			String strLine;
-			String[]keys = {"numPopulation","maxIterations","elitRate","mutationRate","mutation","targetPhrase"};
-			int index=0;
-			 while ((strLine = br.readLine()) != null)   {
-				parameters.put(keys[index], strLine);
-		        index++;
-		      }
-			 dis.close();		
+		}
+		
+		if (!hdfs.isFile(path))
+		{
+			LOG.info("***********RSETUP: NO ES UN FICHERO VALIDO**********");
+			throw new IOException("El fichero especificado "+HDFS_REDUCER_CONFIGURATION_FILE + "no es un fichero valido");
+		}
+		
+		FSDataInputStream dis = hdfs.open(path);
+		BufferedReader br = new BufferedReader(new InputStreamReader(dis));
+		String strLine;
+		String[]keys = {"numPopulation","maxIterations","elitRate","mutationRate","mutation","targetPhrase"};
+		int index=0;
+		 while ((strLine = br.readLine()) != null)   {
+			parameters.put(keys[index], strLine);
+	        index++;
+	      }
+		 dis.close();
+		 numPop = Integer.parseInt((String)parameters.get("numPopulation"));
 	}
 	
 	
@@ -100,7 +93,6 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
 		
 		Iterator<IntWritable> valuesIter =values.iterator();
-		int numPop = Integer.parseInt((String)parameters.get("numPopulation"));
 
 		/**TODO:Si esta presente el elitismo, lo vamos a escribir directamente en el contexto
 		 * con un fitness cualquiera
@@ -108,62 +100,67 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		
 		while (valuesIter.hasNext()) {
 			IntWritable fitness = valuesIter.next();
+			LOG.info("EL NUMERO DE ELEMENTOS PROCESADOS ES " +numElemProcessed);
 			//LOG.info("LA CLAVE DEL DESCENDIENTE ACTUAL ES "+key+" Y SU FITNESS ES "+fitness);	
 		
 			/**Esperamos que lleguen los individuos al torneo y los vamos metiendo
 			 * para las ultimas rondas
 			 */
 			if (numElemProcessed < tournamentSize) {
+				// Wait for individuals to join in the tournament and put them for the last round
 				int currentPos = tournamentSize + (numElemProcessed % tournamentSize);
 				tournArray[currentPos] = new Hashtable();
 				tournArray[currentPos].put(key.toString(), fitness.get());
-				LOG.info("tournArray["+currentPos+"] VALE "+ tournArray[currentPos]);	
+				//LOG.info("tournArray["+currentPos+"] VALE "+ tournArray[currentPos]);
+				//numElemProcessed++;
 			}
-			//Celebramos el torneo sobre una ventana anterior...
 			else {
-				LOG.info("CELEBRAMOS EL TORNEO");
-				//LOG.info("LA POSICION EN LA QUE INSERTO ES "+numElemProcessed % tournArray.length);
-				//tournArray[numElemProcessed % tournArray.length] = descendiente;
-				selectionAndCrossover(numElemProcessed, fitness, context,tournArray);
+				//Celebramos el torneo sobre una ventana anterior...
+				LOG.info("*****CELEBRAMOS EL TORNEO******");
+				//int currentPos = (numElemProcessed % tournamentSize);
+				//LOG.info("LA POSICION EN LA QUE INSERTO ES "+currentPos);
+				//tournArray[currentPos] = new Hashtable();
+				selectionAndCrossover(numElemProcessed, fitness, context,tournArray);			
+				//tournArray[currentPos].put(key.toString(), fitness.get());
+				//numElemProcessed=0;
 			}
-			
 			numElemProcessed++;
-		
-			//Si todos los elementos han sido procesados...
-			//TODO: ¿Cómo saber el numero de elementos que procesa cada Reducer?
-			if ((numElemProcessed) == numPop ) {
-				LOG.info("TODOS LOS ELEMENTOS HAN SIDO PROCESADOS....");
-				//Limpiamos la ultima ventana del torneo...
-				for (int k=1;k<=tournamentSize;k++){
-					selectionAndCrossover(numElemProcessed, fitness, context, tournArray);
-					numElemProcessed++;
-				}
-			}
-		}		
-		LOG.info("FINALIZANDO EL REDUCE EL NUMERO DE ELEMENTOS PROCESADOS HA SIDO " +numElemProcessed);	
+		}
+		//Si todos los elementos han sido procesados...
+		if(numElemProcessed == numPop - 1) {
+			closeAndWrite(fitness, context);
+		}	
+	}
+	
+	public void closeAndWrite(IntWritable fitness, Context context) {
+		LOG.info("Closing reducer");
+		// Cleanup for the last window of tournament
+		for(int k=0; k<tournamentSize; k++) {
+			// Conduct a tournament over the past window				
+			selectionAndCrossover(numElemProcessed, fitness, context,tournArray);
+			numElemProcessed++;
+		}
 	}
 	
 	private void selectionAndCrossover(int numElemProcessed, IntWritable fitness, Context context, Hashtable[]tournArray){
 		String tournWinner = this.tournSelection(tournArray);
 		Text textWinner = new Text(tournWinner);
 		crossArray[numElemProcessed % crossSize] = textWinner; 
-		LOG.info("DENTRO DE SELECTIONANDCROSSOVER LA POSICION EN LA QUE INSERTO ES " +numElemProcessed % crossSize);
-		LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR QUE INSERTO ES " +tournWinner);
+		//LOG.info("DENTRO DE SELECTIONANDCROSSOVER LA POSICION EN LA QUE INSERTO ES " +numElemProcessed % crossSize);
+		LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL GANADOR DEL TORNEO ES " +tournWinner);
 		if (((numElemProcessed - tournamentSize) % crossSize) == (crossSize - 1)) 
 		{
-			//LOG.info("DENTRO DEL IF DEL SELECTIONANDCROSSOVER");
+			// Do crossover every odd iteration between successive individuals...
 			Text[] newIndividuals = crossOver(crossArray);
-			
 			try {
 				  for(int i=0;i < newIndividuals.length;i++)
 				  {
+					LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR QUE ESCRIBO ES " +newIndividuals[i]);  
 				    context.write(newIndividuals[i], fitness);
 				  }
 				} catch(ArrayIndexOutOfBoundsException aioobe) {} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 		}	
@@ -191,11 +188,11 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		else {
 			LOG.info("DENTRO DE TOURNSELECTION, EL TORNEO DEL RESTO DE ELEMENTOS");
 			beginIndex = 0;
-			endIndex = ((2*tournamentSize)-1);
+			endIndex = (tournamentSize-1);
 		}
 		for (int i=beginIndex;i<=endIndex;i++) {
 			Hashtable gladiator = tournArray[i];
-			//LOG.info("DENTRO DE TOURNSELECTION EL TOURNARRAY["+i+"] VALE: "+tournArray[i]);
+			LOG.info("DENTRO DE TOURNSELECTION EL TOURNARRAY["+i+"] VALE: "+tournArray[i]);
 			Enumeration<Integer> e = gladiator.elements();
 			Enumeration<String> keys = gladiator.keys();
 			gladFitness = e.nextElement();
@@ -215,7 +212,7 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	
 	//Operacion de cruce sobre dos individuos...
 	private Text[] crossOver(Text[]crossArray) {
-		LOG.info("EN EL CROSSOVER,LA LONGITUD DEL CROSSARRAY ES "+crossArray.length);
+		//LOG.info("EN EL CROSSOVER,LA LONGITUD DEL CROSSARRAY ES "+crossArray.length);
 		//Declaramos el array de texto de los nuevos individuos tras el cruce...
 		Text[] newIndividuals = new Text[crossArray.length];
 		
@@ -223,17 +220,16 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		String parent2 = crossArray[1].toString();
 		
 		//Establecemos el punto de corte para ver como se generan los descendientes
-		//int cutPoint = r.nextInt(parent1.length());
-		int cutPoint = (int) (Math.random()*parent1.length()+1);
-		LOG.info("EL PUNTO DE CORTE EN EL CROSSOVER ES: "+cutPoint);
+		int cutPoint = (int) ((Math.random()*(parent1.length()- 1))+ 1);
+		//LOG.info("EL PUNTO DE CORTE EN EL CROSSOVER ES: "+cutPoint);
 		
 		//Creamos las partes identicas a las de los padres...
 		String child1part1 = parent1.substring(0, cutPoint -1);
 		String child2part1 = parent2.substring(0, cutPoint -1);
 		
 		//Cruzamos el resto del descendiente...
-		String child1part2 = parent2.substring(cutPoint,parent2.length()-1);
-		String child2part2 = parent1.substring(cutPoint,parent1.length()-1);
+		String child1part2 = parent2.substring(cutPoint,parent2.length());
+		String child2part2 = parent1.substring(cutPoint,parent1.length());
 		
 		//Concatenamos las partes...
 		String child1 = child1part1.concat(child1part2);
