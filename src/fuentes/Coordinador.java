@@ -35,6 +35,7 @@ public class Coordinador implements ICoordinador {
 	public String readFromClientAndIterate(int numPop, int maxiter, int debug, String numProblem) throws IOException, ExecException, Exception {
 		
 		String bestIndividual="";
+		String []args = new String[1];
 		Configuration conf = new Configuration();
 		FileSystem fs = FileSystem.get(conf);
 		Path oldPopulationsDirPath = new Path ("/user/hadoop-user/oldPopulations");
@@ -52,11 +53,8 @@ public class Coordinador implements ICoordinador {
 
 			//Si es la primera iteracion, leemos el fichero localmente...
 			if (i==0) this.uploadToHDFS(jCont, localPopulationFile.toString());		
-			/**Llamamos al Master...
-			 * 
-			 */
+			
 			System.out.println("COORDINADOR: Llamo al master");
-			String []args = new String[1];
 			args[0] = numProblem;
 			MRPGAMaster.main(args);
 			System.out.println("COORDINADOR: Acaba el master");
