@@ -27,8 +27,9 @@ public class Cliente {
 	private static String generateRandomString(String target) {
 			String cadenaAleatoria = "";
 			int sizeTarget=target.length();
-			long milis = new java.util.GregorianCalendar().getTimeInMillis();
-			Random r = new Random(milis);
+			//long milis = new java.util.GregorianCalendar().getTimeInMillis();
+			//Random r = new Random(milis);
+			Random r = new Random(System.nanoTime());
 	
 			int i=0;
 				while ( i < sizeTarget){
@@ -45,8 +46,9 @@ public class Cliente {
 	private static String generateRandomBinaryString(String target) {
 		String cadenaAleatoria ="";
 		int sizeTarget=target.length();
-		long milis = new java.util.GregorianCalendar().getTimeInMillis();
-		Random r = new Random(milis);
+		//long milis = new java.util.GregorianCalendar().getTimeInMillis();
+		//Random r = new Random(milis);
+		Random r = new Random(System.nanoTime());
 		int d = 2; // nº de decimales
 		int u = 10^d; // Hay que usar la función para potencias.
 		float i = 1 + r.nextFloat() % u;
@@ -101,12 +103,12 @@ public class Cliente {
 				//Escribimos a fichero...	
 				bw.write(word +"\r\n");
 				i++;
-				try {
-					Thread.sleep(15);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+//				try {
+//					Thread.sleep(15);
+//				} catch (InterruptedException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
 			}
 			//Cerramos el fichero
 			System.out.println("Cerrando fichero de poblacion...");
@@ -116,7 +118,7 @@ public class Cliente {
 	
 	//Creamos el fichero de configuracion que debe subir el coordinador al HDFS para que el
 	//Master lo distribuya entre los nodos trabajadores...
-	private static void generateMapperConfigurationFile(String target, int boolElit, int debug) {
+	private static void generateMapperConfigurationFile(String target, int numPop, int boolElit, int debug) {
 		
 		//Instanciamos el fichero...
 		String sFile ="mapper_configuration.dat";
@@ -144,6 +146,7 @@ public class Cliente {
 			BufferedWriter bw= new BufferedWriter(new FileWriter(sFile));
 			System.out.println("Escribiendo en fichero de configuracion para Mappers...");
 			bw.write(target +"\r\n");
+			bw.write(numPop +"\r\n");
 			bw.write(debug +"\n");
 			bw.write(boolElit +"\r\n");
 			//Cerramos el fichero
@@ -270,7 +273,7 @@ public class Cliente {
 		 * para los nodos Worker... 
 		 */
 		generatePopulationFile(target,population,Integer.parseInt(numProblem));
-		generateMapperConfigurationFile(target, boolElit, debug);
+		generateMapperConfigurationFile(target, population, boolElit, debug);
 		generateReducerConfigurationFile(population, maxiter,boolElit,mutationrate,mutation,target); 
 		
 		

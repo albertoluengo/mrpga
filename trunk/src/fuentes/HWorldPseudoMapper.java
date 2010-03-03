@@ -93,8 +93,7 @@ public class HWorldPseudoMapper extends Mapper<Object, Text, Text, IntWritable> 
 		int boolElit = Integer.parseInt((String)mapParameters.get("elitism"));
 		int debug = Integer.parseInt((String)mapParameters.get("debugging"));
 		StringTokenizer itr = new StringTokenizer(line);
-		int bestFitness = 999999;
-		FileSystem hdfs = FileSystem.get(new Configuration()); 
+		int bestFitness = 999999; 
 		Text bestIndiv = new Text();
 		
 		while(itr.hasMoreTokens()) {
@@ -113,41 +112,24 @@ public class HWorldPseudoMapper extends Mapper<Object, Text, Text, IntWritable> 
 				closeAndWrite(debug,bestIndiv,bestFitness);
 			}
 		}
-		
-//		if (boolElit ==1) {
-//			FSDataOutputStream dos = hdfs.create(bestIndivPath, true);
-//			/**Si el valor para debug que leemos del fichero es true, creamos un fichero
-//			 * nuevo cada iteración, si no lo sobreescribimos (overwrite=true)
-//			 */
-//			if (debug==0) {
-//				hdfs.delete(bestIndivPath,true);
-//				dos = hdfs.create(bestIndivPath, true);
-//			}
-//			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dos));
-//			bw.write(bestIndiv.toString());
-//			bw.close();
-//		}
 	}
 	
 	/**Una vez todos los elementos hayan sido procesados, escribimos en un
 	 * fichero global el mejor de ellos (si queremos introducir elitismo)...
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, int bestFitness) throws IOException {
-		//String BEST_INDIVIDUAL_FILE = "/user/hadoop-user/bestIndividuals/bestIndiv.txt";
-		//Path bestIndivPath = new Path(BEST_INDIVIDUAL_FILE);
-		String bestIndString = "/user/hadoop-user/bestIndividuals";
-		Path bestDir = new Path(bestIndString);
-		Path outDir = new Path(bestDir, "global-map");
-
+		String BEST_INDIVIDUAL_FILE = "/user/hadoop-user/bestIndividuals/bestIndiv.txt";
+		Path bestIndivPath = new Path(BEST_INDIVIDUAL_FILE);
+		FileSystem hdfs = FileSystem.get(new Configuration());
+		FSDataOutputStream dos = hdfs.create(bestIndivPath, true);
 		//El HDFS no permite que multiples mappers escriban sobre el mismo fichero, por lo que creamos uno por cada mapper...
-		Path outFile = new Path(outDir, mapTaskId);
-		FileSystem fileSys = FileSystem.get(conf);
-		SequenceFile.Writer writer = SequenceFile.createWriter(fileSys, conf, 
-				outFile, Text.class, IntWritable.class, 
-				CompressionType.NONE);
-
-		writer.append(bestIndiv, new IntWritable(bestFitness));
-		writer.close();
+		if (debug==0) {
+			hdfs.delete(bestIndivPath,true);
+			dos = hdfs.create(bestIndivPath, true);
+		}
+		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dos));
+		bw.write(bestIndiv.toString());
+		bw.close();
 	}	
 	
 }

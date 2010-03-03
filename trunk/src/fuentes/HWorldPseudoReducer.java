@@ -40,7 +40,7 @@ import org.apache.hadoop.util.LineReader;
  */
 public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritable> {
 
-	private IntWritable result = new IntWritable();
+	private IntWritable fitness = new IntWritable();
 	private int crossSize = 2;
 	private int tournamentSize = 5;
 	private int numElemProcessed, numPop = 0;
@@ -99,32 +99,18 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		 */
 		
 		while (valuesIter.hasNext()) {
-			IntWritable fitness = valuesIter.next();
+			fitness = valuesIter.next();
 			LOG.info("EL NUMERO DE ELEMENTOS PROCESADOS ES " +numElemProcessed);
 			//LOG.info("LA CLAVE DEL DESCENDIENTE ACTUAL ES "+key+" Y SU FITNESS ES "+fitness);	
-		
-			/**Esperamos que lleguen los individuos al torneo y los vamos metiendo
-			 * para las ultimas rondas
-			 */
-			if (numElemProcessed < tournamentSize) {
-				// Wait for individuals to join in the tournament and put them for the last round
-				int currentPos = tournamentSize + (numElemProcessed % tournamentSize);
-				tournArray[currentPos] = new Hashtable();
-				tournArray[currentPos].put(key.toString(), fitness.get());
-				//LOG.info("tournArray["+currentPos+"] VALE "+ tournArray[currentPos]);
-				//numElemProcessed++;
-			}
-			else {
-				//Celebramos el torneo sobre una ventana anterior...
+			int currentPos = (numElemProcessed % tournamentSize);
+			tournArray[currentPos] = new Hashtable();
+			tournArray[currentPos].put(key.toString(), fitness.get());
+			numElemProcessed++;	
+			//Cuando tengamos [tournamentSize] elementos celebramos el torneo...
+			if (numElemProcessed % tournamentSize == 0){
 				LOG.info("*****CELEBRAMOS EL TORNEO******");
-				//int currentPos = (numElemProcessed % tournamentSize);
-				//LOG.info("LA POSICION EN LA QUE INSERTO ES "+currentPos);
-				//tournArray[currentPos] = new Hashtable();
-				selectionAndCrossover(numElemProcessed, fitness, context,tournArray);			
-				//tournArray[currentPos].put(key.toString(), fitness.get());
-				//numElemProcessed=0;
+				selectionAndCrossover(numElemProcessed, fitness, context,tournArray);
 			}
-			numElemProcessed++;
 		}
 		//Si todos los elementos han sido procesados...
 		if(numElemProcessed == numPop - 1) {
@@ -133,7 +119,7 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	}
 	
 	public void closeAndWrite(IntWritable fitness, Context context) {
-		LOG.info("Closing reducer");
+		LOG.info("*****TODOS LOS ELEMENTOS HAN SIDO PROCESADOS******");
 		// Cleanup for the last window of tournament
 		for(int k=0; k<tournamentSize; k++) {
 			// Conduct a tournament over the past window				
@@ -155,7 +141,8 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 			try {
 				  for(int i=0;i < newIndividuals.length;i++)
 				  {
-					LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR QUE ESCRIBO ES " +newIndividuals[i]);  
+					LOG.info("******ESCRITURA EN EL CROSSOVER*****");
+					LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR["+i+"]QUE ESCRIBO ES " +newIndividuals[i]);  
 				    context.write(newIndividuals[i], fitness);
 				  }
 				} catch(ArrayIndexOutOfBoundsException aioobe) {} catch (IOException e) {
@@ -174,23 +161,9 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		String tournWinner = new String();
 		String gladKey = new String();
 		int bestFitness = 999999;
-		int gladFitness, beginIndex, endIndex;
+		int gladFitness = 0;
 		
-		/**
-		 * Los primeros cinco elementos entran en las ultimas posiciones del array
-		 * de contendientes...
-		 */
-		if (tournArray[0] == null) {
-			//LOG.info("DENTRO DE TOURNSELECTION, EL TORNEO DE LOS 5 PRIMEROS ELEMENTOS");
-			beginIndex = tournamentSize;
-			endIndex = ((2*tournamentSize)-1);	
-		}
-		else {
-			LOG.info("DENTRO DE TOURNSELECTION, EL TORNEO DEL RESTO DE ELEMENTOS");
-			beginIndex = 0;
-			endIndex = (tournamentSize-1);
-		}
-		for (int i=beginIndex;i<=endIndex;i++) {
+		for (int i=0;i<=(tournamentSize-1);i++) {
 			Hashtable gladiator = tournArray[i];
 			LOG.info("DENTRO DE TOURNSELECTION EL TOURNARRAY["+i+"] VALE: "+tournArray[i]);
 			Enumeration<Integer> e = gladiator.elements();

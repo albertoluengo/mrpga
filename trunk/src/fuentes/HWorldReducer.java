@@ -3,7 +3,9 @@ package fuentes;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Random;
 
@@ -64,6 +66,47 @@ public class HWorldReducer extends Reducer<Text,IntWritable,Text,IntWritable> {
 		int delta = (r.nextInt(1000) % 90) + 32; 
 		target= ((target + delta) % 122);
 	}*/
+	
+//	/**Implementamos el metodo de seleccion por torneo sin reemplazamiento*/
+//	private String tournSelection(Hashtable[]tournArray) {
+//		/**Dentro del array de contendientes, elegimos al que tenga mejor fitness para
+//		 * luego cruzarlo... 
+//		 */
+//		String tournWinner = new String();
+//		String gladKey = new String();
+//		int bestFitness = 999999;
+//		int gladFitness, beginIndex, endIndex;
+//		
+//		/**
+//		 * Los primeros cinco elementos entran en las ultimas posiciones del array
+//		 * de contendientes...
+//		 */
+//		if (tournArray[0] == null) {
+//			//LOG.info("DENTRO DE TOURNSELECTION, EL TORNEO DE LOS 5 PRIMEROS ELEMENTOS");
+//			beginIndex = tournamentSize;
+//			endIndex = ((2*tournamentSize)-1);	
+//		}
+//		else {
+//			LOG.info("DENTRO DE TOURNSELECTION, EL TORNEO DEL RESTO DE ELEMENTOS");
+//			beginIndex = 0;
+//			endIndex = (tournamentSize-1);
+//		}
+//		for (int i=beginIndex;i<=endIndex;i++) {
+//			Hashtable gladiator = tournArray[i];
+//			LOG.info("DENTRO DE TOURNSELECTION EL TOURNARRAY["+i+"] VALE: "+tournArray[i]);
+//			Enumeration<Integer> e = gladiator.elements();
+//			Enumeration<String> keys = gladiator.keys();
+//			gladFitness = e.nextElement();
+//			gladKey = (String)keys.nextElement();
+//			 
+//		if (gladFitness < bestFitness) {
+//			bestFitness = gladFitness;
+//			tournWinner = gladKey;
+//			}
+//		}	
+//		
+//		return tournWinner;
+//	}
 	
 	private void mate(String population, String subOptimal, float mutation, int popSize,float elitRate, String target) {
 		int elitSize = (int)(popSize * elitRate);
@@ -165,53 +208,48 @@ public class HWorldReducer extends Reducer<Text,IntWritable,Text,IntWritable> {
 	}*/
 	
 	
-	@Override
-	protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-		int fitness = 0;	
-		for (IntWritable val : values) {
-		      fitness += val.get();
-		    }
-		result.set(fitness);
-		context.write(key, result);
-		//recordWriter.write(key, result);
-		writer.append(new Text(key), new IntWritable(result.get()));
-	}
-	
-	/*@Override
-	protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-		int fitness = 0; 
-		for (IntWritable val : values) {
-		      fitness += val.get();
-		    }
-		result.set(fitness);
-		writer.append(key,result);
-	}*/
-
-	/**Una vez se haya hecho el reduce, se deberan copiar los resultados a un fichero local
-	 * para que el coordinador pueda leer dichos ficheros, y borrarlos para la siguiente iteracion... 
-	 */
- 
-	/*@Override
-    protected void cleanup(Context cont) throws IOException {
- 
-      //TERCERA FORMA
-      //write output to a file
-	  Configuration conf = new Configuration();
-	  JobContext jCont = new JobContext(conf, null);
-	  FileSystem fs = FileSystem.get(jCont.getConfiguration());	
-      Path outDir = new Path("/user/hadoop-user/output", "output");
-      Path outFile = new Path(outDir, "suboptimal.txt");
-      SequenceFile.Writer writer = SequenceFile.createWriter(fs, conf,
-          outFile, Text.class, IntWritable.class, 
-          CompressionType.NONE);
-      writer.append(new Text(keyword), new IntWritable(fitnessValue));
-      writer.close();
-    }*/
-	
-	@Override
-    protected void cleanup(Context cont) throws IOException,InterruptedException {
-      writer.close();
-    }
+//	@Override
+//	protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+//		
+//		Iterator<IntWritable> valuesIter =values.iterator();
+//
+//		/**TODO:Si esta presente el elitismo, lo vamos a escribir directamente en el contexto
+//		 * con un fitness cualquiera
+//		 */
+//		
+//		while (valuesIter.hasNext()) {
+//			fitness = valuesIter.next();
+//			LOG.info("EL NUMERO DE ELEMENTOS PROCESADOS ES " +numElemProcessed);
+//			//LOG.info("LA CLAVE DEL DESCENDIENTE ACTUAL ES "+key+" Y SU FITNESS ES "+fitness);	
+//		
+//			/**Esperamos que lleguen los individuos al torneo y los vamos metiendo
+//			 * para las ultimas rondas
+//			 */
+//			if (numElemProcessed < tournamentSize) {
+//				// Wait for individuals to join in the tournament and put them for the last round
+//				int currentPos = tournamentSize + (numElemProcessed % tournamentSize);
+//				tournArray[currentPos] = new Hashtable();
+//				tournArray[currentPos].put(key.toString(), fitness.get());
+//				//LOG.info("tournArray["+currentPos+"] VALE "+ tournArray[currentPos]);
+//				//numElemProcessed++;
+//			}
+//			else {
+//				//Celebramos el torneo sobre una ventana anterior...
+//				LOG.info("*****CELEBRAMOS EL TORNEO******");
+//				//int currentPos = (numElemProcessed % tournamentSize);
+//				//LOG.info("LA POSICION EN LA QUE INSERTO ES "+currentPos);
+//				//tournArray[currentPos] = new Hashtable();
+//				selectionAndCrossover(numElemProcessed, fitness, context,tournArray);			
+//				//tournArray[currentPos].put(key.toString(), fitness.get());
+//				//numElemProcessed=0;
+//			}
+//			numElemProcessed++;
+//		}
+//		//Si todos los elementos han sido procesados...
+//		if(numElemProcessed == numPop - 1) {
+//			closeAndWrite(fitness, context);
+//		}	
+//	}
 	
 	
 }

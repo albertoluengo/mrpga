@@ -22,6 +22,7 @@ public class MRPGAMaster {
 		FileSystem fs = FileSystem.get(conf);
 		Job job = new Job(conf, "MRPGA_project");
 		job.setJarByClass(fuentes.MRPGAMaster.class);
+		
 		switch (Integer.parseInt(args[0])){
 		
 		case 1: //Problema 'Hola Mundo'
