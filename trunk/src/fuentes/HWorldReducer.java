@@ -167,6 +167,15 @@ public class HWorldReducer extends Reducer<Text,IntWritable,Text,IntWritable> {
 	    return writer;
 	}
 	
+//	public void closeAndWrite(IntWritable fitness, Context context) {
+//		LOG.info("*****TODOS LOS ELEMENTOS HAN SIDO PROCESADOS******");
+//		// Cleanup for the last window of tournament
+//		for(int k=0; k<tournamentSize; k++) {
+//			// Conduct a tournament over the past window				
+//			selectionAndCrossover(numElemProcessed, fitness, context,tournArray);
+//			numElemProcessed++;
+//		}
+	
 	@Override
 	protected void setup(Context cont) throws IOException{
 		writer = this.loadSequenceWriter();
