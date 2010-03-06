@@ -76,7 +76,7 @@ public class HWorldPseudoMapper extends Mapper<Object, Text, Text, IntWritable> 
 		String[]keys = {"targetPhrase","numPopulation","debugging","elitism"};
 		int index=0;
 		 while ((strLine = br.readLine()) != null)   {
-			 mapParameters.put(keys[index], strLine);
+			mapParameters.put(keys[index], strLine);
 	        index++;
 	      }
 		 dis.close();

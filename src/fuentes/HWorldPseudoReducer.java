@@ -43,7 +43,7 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	private IntWritable fitness = new IntWritable();
 	private int crossSize = 2;
 	private int tournamentSize = 5;
-	private int numElemProcessed, numPop = 0;
+	private int numElemProcessed, numPop, boolElit = 0;
 	private static final Log LOG = LogFactory.getLog(HWorldPseudoReducer.class.getName());
 	//Cada posicion del array del torneo sera un Hashtable, ya que necesitamos almacenar al individuo y su fitness..
 	private Hashtable[]tournArray = new Hashtable [2*tournamentSize]; 
@@ -51,7 +51,10 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	private Hashtable parameters = new Hashtable();
 	//Indicamos el fichero de configuracion que debera leer
 	final String HDFS_REDUCER_CONFIGURATION_FILE="/user/hadoop-user/data/reducer_configuration.dat";
+	final String BEST_INDIVIDUAL_FILE="/user/hadoop-user/bestIndividuals/bestIndiv.txt";
 	private Random r = new Random(System.nanoTime());
+	private Text bestInd = new Text("");
+	private double mutationRate = 0;
 
 	
 	@Override
@@ -59,33 +62,44 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		LOG.info("***********DENTRO DEL SETUP DEL REDUCER**********");
 		FileSystem hdfs = FileSystem.get(new Configuration()); 
 		Path path = new Path(HDFS_REDUCER_CONFIGURATION_FILE);
+		Path bestIndPath = new Path(BEST_INDIVIDUAL_FILE);
 		
 		
-		//Validamos primero el path de entrada antes de leer del fichero
-		if (!hdfs.exists(path))
+		
+		//Validamos primero los path de entrada antes de leer del fichero
+		if (!hdfs.exists(path) || (!hdfs.exists(bestIndPath)))
 		{
 			LOG.info("***********RSETUP:NO EXISTE EL FICHERO**********");
-			throw new IOException("El fichero especificado " +HDFS_REDUCER_CONFIGURATION_FILE + "no existe");
-			
+			throw new IOException("ALGUNO DE LOS FICHEROS DE CONFIGURACION NO EXISTE");	
 		}
 		
-		if (!hdfs.isFile(path))
+		if (!hdfs.isFile(path)||(!hdfs.isFile(path)))
 		{
 			LOG.info("***********RSETUP: NO ES UN FICHERO VALIDO**********");
-			throw new IOException("El fichero especificado "+HDFS_REDUCER_CONFIGURATION_FILE + "no es un fichero valido");
+			throw new IOException("ALGUNO DE LOS FICHEROS ESPECIFICADOS NO ES VALIDO");
 		}
 		
+		
 		FSDataInputStream dis = hdfs.open(path);
+		FSDataInputStream dis2 = hdfs.open(bestIndPath);
 		BufferedReader br = new BufferedReader(new InputStreamReader(dis));
+		BufferedReader br2 = new BufferedReader(new InputStreamReader(dis2));
 		String strLine;
-		String[]keys = {"numPopulation","maxIterations","elitRate","mutationRate","mutation","targetPhrase"};
+		String[]keys = {"numPopulation","maxIterations","boolElit","mutationRate","mutation","targetPhrase"};
 		int index=0;
-		 while ((strLine = br.readLine()) != null)   {
+		while ((strLine = br.readLine()) != null)   {
 			parameters.put(keys[index], strLine);
-	        index++;
-	      }
-		 dis.close();
-		 numPop = Integer.parseInt((String)parameters.get("numPopulation"));
+		    index++;
+		  }
+		while ((strLine = br2.readLine()) != null)   {
+			bestInd = new Text(strLine);
+		  }
+		
+		dis.close();
+		numPop = Integer.parseInt((String)parameters.get("numPopulation"));
+		boolElit = Integer.parseInt((String)parameters.get("boolElit"));
+		mutationRate = Double.parseDouble((String)parameters.get("mutationRate"));
+		 
 	}
 	
 	
@@ -118,13 +132,11 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		}	
 	}
 	
-	public void closeAndWrite(IntWritable fitness, Context context) {
+	public void closeAndWrite(IntWritable fitness, Context context) throws IOException, InterruptedException {
 		LOG.info("*****TODOS LOS ELEMENTOS HAN SIDO PROCESADOS******");
-		// Cleanup for the last window of tournament
-		for(int k=0; k<tournamentSize; k++) {
-			// Conduct a tournament over the past window				
-			selectionAndCrossover(numElemProcessed, fitness, context,tournArray);
-			numElemProcessed++;
+		//Si esta activada la opcion del elitismo, escribimos el mejor elemento en la salida...
+		if (boolElit == 1) {
+			context.write(bestInd, fitness);
 		}
 	}
 	
@@ -132,11 +144,13 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		String tournWinner = this.tournSelection(tournArray);
 		Text textWinner = new Text(tournWinner);
 		crossArray[numElemProcessed % crossSize] = textWinner; 
-		//LOG.info("DENTRO DE SELECTIONANDCROSSOVER LA POSICION EN LA QUE INSERTO ES " +numElemProcessed % crossSize);
 		LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL GANADOR DEL TORNEO ES " +tournWinner);
 		if (((numElemProcessed - tournamentSize) % crossSize) == (crossSize - 1)) 
 		{
-			// Do crossover every odd iteration between successive individuals...
+			//Antes de cruzar los elementos, los mutamos para introducir diversidad...
+			for(int i=0;i < crossArray.length;i++) {
+				crossArray[i] = this.mutate(crossArray[i]);
+			}
 			Text[] newIndividuals = crossOver(crossArray);
 			try {
 				  for(int i=0;i < newIndividuals.length;i++)
@@ -226,10 +240,9 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	
 	
 	/**Mutamos al individuo concreto**/
-	private void mutate(Text individual)
+	private Text mutate(Text individual)
 	{
 		double random = r.nextDouble();
-		double mutationRate = (Double)parameters.get("mutationRate");
 		
 		//Si el numero aleatorio cae dentro del rango de mutacion, seguimos...
 		if (random < mutationRate) {
@@ -238,8 +251,8 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 			char[] arr = sText.toCharArray();  
 			
 			//Obtenemos dos posiciones aleatorias dentro del Individuo...
-			int r1 = r.nextInt(popLength-1);
-			int r2 = r.nextInt(popLength-1);
+			int r1 = (int) ((Math.random()*(sText.length()- 1))+ 1);
+			int r2 = (int) ((Math.random()*(sText.length()- 1))+ 1);
 			
 			//Obtenemos los genes que se encuentran en esas posiciones...
 			char g1 = sText.charAt(r1);
@@ -250,5 +263,6 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 			arr[r2] = g1;
 			individual.set(arr.toString());
 		}
+		return individual;
 	}
 }
