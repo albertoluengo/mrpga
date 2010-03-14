@@ -24,10 +24,11 @@ import org.apache.pig.backend.executionengine.ExecException;
 
 public interface ICoordinador {
 
-	public String readFromClientAndIterate(int numpop, int maxiter, int debug, String numProblem)throws Exception;
+	public String readFromClientAndIterate(int numpop, int maxiter, int debug, int boolElit, String numProblem)throws Exception;
 	public void uploadToHDFS(JobContext cont, String population) throws IOException;
 	public void replacePopulationFile(Path original, Path actual) throws IOException;
 	public void runPigScript(String filePath, int iterations, Configuration conf)throws ExecException, IOException;
 	public String printBestIndividual(String individual, int fitness);
 	public Hashtable<String, Integer> searchBestIndividual(Path filePath, Configuration conf)throws IOException;
+	public String readFromHDFS(String stringPath);
 }

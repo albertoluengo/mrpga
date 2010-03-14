@@ -45,7 +45,11 @@ public class HWorldPseudoMapper extends Mapper<Object, Text, Text, IntWritable> 
 		int targetSize=target.length();
 		String textAsString = original.toString();
 		int fitness=0;
+		LOG.info("***********DENTRO DEL CALCULATEFITNESS**********");
 		for (int j=0; j<targetSize; j++) {
+			LOG.info("EL VALOR DE J ES " +j);
+			LOG.info("EL TARGETSIZE ES " +targetSize);
+			LOG.info("EL TEXTASSTRING ES " +textAsString);
 			fitness += Math.abs((textAsString.charAt(j) - target.charAt(j)));
 		}
 		return new IntWritable(fitness);
@@ -53,12 +57,11 @@ public class HWorldPseudoMapper extends Mapper<Object, Text, Text, IntWritable> 
 	
 	@Override
 	protected void setup(Context cont)throws IOException {
-		LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
+		//LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
 		conf = cont.getConfiguration();
 		mapTaskId = cont.getConfiguration().get("mapred.task.id");
-		FileSystem hdfs = FileSystem.get(new Configuration()); 
+		FileSystem hdfs = FileSystem.get(new Configuration());
 		Path path = new Path(HDFS_MAPPER_CONFIGURATION_FILE);
-		
 		//Validamos primero el path de entrada antes de leer del fichero
 		if (!hdfs.exists(path))
 		{

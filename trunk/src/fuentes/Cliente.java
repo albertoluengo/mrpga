@@ -208,8 +208,8 @@ public class Cliente {
 		float mutation = 0;
 		String target ="";*/
 		
-		int population=100;
-		int maxiter =1;
+		int population=1000;
+		int maxiter =3;
 		int boolElit = 1;
 		float mutationrate=0.25f;
 		String target="Hello world!";
@@ -217,7 +217,7 @@ public class Cliente {
 		float mutation = 0;
 		int debug = 1;
 		String result ="";
-		String numProblem = "1"; //1-->'Hola Mundo', 2-->'OneMAX', 3-->'PPeaks'
+		String numProblem = "1"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
 		
 		Coordinador coord = new Coordinador();
 	
@@ -302,7 +302,7 @@ public class Cliente {
 		
 		//PASO 2.- El coordinador realizara las iteraciones pertinentes y devolvera el resultado buscado...
 		try {
-			result = coord.readFromClientAndIterate(population, maxiter, debug, numProblem);
+			result = coord.readFromClientAndIterate(population, maxiter, debug, boolElit, numProblem);
 		} catch (IOException e) {
 			System.err.println("CLIENTE: Se ha producido un error de I/O en la conexion al HDFS");
 		}catch (Exception e) {
