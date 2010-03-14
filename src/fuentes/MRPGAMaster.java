@@ -25,8 +25,8 @@ public class MRPGAMaster {
 		
 		switch (Integer.parseInt(args[0])){
 		
-		case 1: //Problema 'Hola Mundo'
-			System.out.println("MASTER: PROBLEMA HOLA MUNDO");
+		case 1: //Problema 'Frase Objetivo'
+			System.out.println("MASTER: PROBLEMA FRASE OBJETIVO");
 			job.setMapperClass(fuentes.HWorldPseudoMapper.class);
 			job.setReducerClass(fuentes.HWorldPseudoReducer.class);
 			//job.setCombinerClass(fuentes.HWorldPseudoReducer.class);
@@ -60,13 +60,6 @@ public class MRPGAMaster {
 		
 		}
 		
-		
-	    //final String HDFS_MAPPER_CONFIGURATION_FILE="/user/hadoop-user/data/mapper_configuration.dat";
-	    //Path hdfsConfMapPath = new Path(HDFS_MAPPER_CONFIGURATION_FILE);
-	    
-	    //final String HDFS_REDUCER_CONFIGURATION_FILE="/user/hadoop-user/data/mapper_configuration.dat";
-	    //Path hdfsConfRedPath = new Path(HDFS_REDUCER_CONFIGURATION_FILE);
-	    
 	    //URI uriMapper =new URI("/user/hadoop-user/data/mapper_configuration.dat");
 	    //URI uriReducer =new URI("/user/hadoop-user/data/reducer_configuration.dat");
 	   
@@ -88,18 +81,17 @@ public class MRPGAMaster {
 		/*Especificamos los directorios de entrada y salida que van a utilizarse
 	     */
 	    FileInputFormat.addInputPath(job, new Path("input"));
-	    Path outputPath = new Path("output");
-	    		
+	    Path outputPath = new Path("output");	    		
 	    //FileSystem fs = FileSystem.get(FileSystem.getDefaultUri(job.getConfiguration()),job.getConfiguration());
 	    
 	    try {
 	    	if (fs.exists(outputPath)) {
-	    		//remove the directory first
+	    		//Eliminamos el directorio de salida primero...
 	    		fs.delete(outputPath,true);
 	    	}
 	    }
 	    catch (IOException ioe) {
-	    	System.err.println("NODO MASTER:Se ha producido un error borrando el dir");
+	    	System.err.println("MASTER:Se ha producido un error borrando los directorios");
 	    	System.exit(1);
 	    }
  

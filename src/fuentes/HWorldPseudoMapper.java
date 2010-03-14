@@ -41,15 +41,11 @@ public class HWorldPseudoMapper extends Mapper<Object, Text, Text, IntWritable> 
 	final String HDFS_MAPPER_CONFIGURATION_FILE="/user/hadoop-user/data/mapper_configuration.dat";
 	
 	
-	private IntWritable calculateFitness(String target, Text original) {		
+	private IntWritable calculateFitness(String target, Text individual) {		
 		int targetSize=target.length();
-		String textAsString = original.toString();
+		String textAsString = individual.toString();
 		int fitness=0;
-		LOG.info("***********DENTRO DEL CALCULATEFITNESS**********");
 		for (int j=0; j<targetSize; j++) {
-			LOG.info("EL VALOR DE J ES " +j);
-			LOG.info("EL TARGETSIZE ES " +targetSize);
-			LOG.info("EL TEXTASSTRING ES " +textAsString);
 			fitness += Math.abs((textAsString.charAt(j) - target.charAt(j)));
 		}
 		return new IntWritable(fitness);
@@ -121,15 +117,16 @@ public class HWorldPseudoMapper extends Mapper<Object, Text, Text, IntWritable> 
 	 * fichero global el mejor de ellos (si queremos introducir elitismo)...
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, int bestFitness) throws IOException {
-		String BEST_INDIVIDUAL_FILE = "/user/hadoop-user/bestIndividuals/bestIndiv.txt";
-		Path bestIndivPath = new Path(BEST_INDIVIDUAL_FILE);
+		String bestFile = "/user/hadoop-user/bestIndividuals/bestIndiv.txt";
+		String bestDir = "/user/hadoop-user/bestIndividuals";
+		Path bestIndivPath = new Path(bestFile);
+		Path bestDirPath = new Path(bestDir);
 		FileSystem hdfs = FileSystem.get(new Configuration());
-		FSDataOutputStream dos = hdfs.create(bestIndivPath, true);
-		//El HDFS no permite que multiples mappers escriban sobre el mismo fichero, por lo que creamos uno por cada mapper...
-		if (debug==0) {
-			hdfs.delete(bestIndivPath,true);
-			dos = hdfs.create(bestIndivPath, true);
-		}
+		if (hdfs.exists(bestDirPath)) {
+    		//Eliminamos el directorio de los mejores individuos primero...
+    		hdfs.delete(bestDirPath,true);
+    	}
+		FSDataOutputStream dos = hdfs.create(bestIndivPath);
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dos));
 		bw.write(bestIndiv.toString());
 		bw.close();
