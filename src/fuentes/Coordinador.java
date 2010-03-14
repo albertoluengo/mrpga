@@ -1,11 +1,14 @@
 package fuentes;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Hashtable;
 import java.util.Scanner;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
@@ -27,12 +30,12 @@ public class Coordinador implements ICoordinador {
 	Path localPopulationFile=new Path("./population.txt");
 	Path hdfsPopulationPath=new Path("/user/hadoop-user/input/population.txt");
 	Path subOptimalResultsFilePath= new Path("/user/hadoop-user/output/part-r-00000");
-	Path pigResultFile= new Path("/user/hadoop-user/output/pigResults/part-00000");
-	Hashtable<String, Integer> hTable = null;
+	//Path pigResultFile= new Path("/user/hadoop-user/output/pigResults/part-00000");
+	Hashtable<String, Integer> hTable = new Hashtable();
 	
 	
 	@Override
-	public String readFromClientAndIterate(int numPop, int maxiter, int debug, String numProblem) throws IOException, ExecException, Exception {
+	public String readFromClientAndIterate(int numPop, int maxiter, int debug, int boolElit, String numProblem) throws IOException, ExecException, Exception {
 		
 		String bestIndividual="";
 		String []args = new String[1];
@@ -93,15 +96,21 @@ public class Coordinador implements ICoordinador {
 				}
 			}
 			
-			/**Una vez calculado el fitness de cada uno de los elementos, deberíamos buscar si
-			 * alguno tiene valor 0 
+			/**Miramos si en la poblacion resultante después del script de Pig, tenemos el resultado... 
 			 */
-//			hTable = this.searchBestIndividual(subOptimalResultsFilePath,conf);
-//			if (hTable.containsValue(0)) break;
+			hTable = this.searchBestIndividual(subOptimalResultsFilePath,conf);
+			if (hTable.containsValue(0)) break;	
 		}
-		//Imprimimos el mejor individuo que hayamos encontrado...
-//		System.out.println("COORDINADOR: Imprimo el mejor individuo...");
-//		bestIndividual = printBestIndividual(hTable.keys().toString(),(Integer)hTable.elements().nextElement());
+		//Si no se introduce elitismo, imprimimos el mejor individuo que hayamos encontrado...
+		System.out.println("COORDINADOR: Imprimo el mejor individuo...");
+		if (boolElit == 0) {
+			bestIndividual = printBestIndividual(hTable.keys().toString(),(Integer)hTable.elements().nextElement());
+		}
+		else {
+			//Leemos el fichero del directorio donde se almacenan los mejores individuos de cada generacion...
+			bestIndividual = this.readFromHDFS("/user/hadoop-user/bestIndividuals/bestIndiv.txt");
+		}
+			 
 		return bestIndividual;
 	}
 
@@ -214,6 +223,38 @@ public class Coordinador implements ICoordinador {
 	@Override
 	public String printBestIndividual(String bestIndividual, int bestFitness) {
 		String result = "Best individual: '"+bestIndividual+"' with fitness: "+bestFitness+"";
+		return result;
+	}
+	
+	@Override
+	public String readFromHDFS(String stringPath) {
+		Path pathToRead = new Path(stringPath);
+		FileSystem hdfs;
+		String strLine = "", bestIndividual = "", result = "";
+		try {
+			hdfs = FileSystem.get(new Configuration());
+			//Validamos primero el path de entrada antes de leer del fichero
+			if (!hdfs.exists(pathToRead))
+			{
+				throw new IOException("El fichero especificado " +pathToRead.toString() + "no existe");
+			}
+			
+			if (!hdfs.isFile(pathToRead))
+			{
+				throw new IOException("El fichero especificado "+pathToRead.toString() + "no existe");
+			}
+			FSDataInputStream dis = hdfs.open(pathToRead);
+			BufferedReader br = new BufferedReader(new InputStreamReader(dis));
+			
+			while ((strLine = br.readLine()) != null)   {
+				bestIndividual = strLine;
+		      }
+			dis.close();
+			result = "Best individual: "+bestIndividual;
+		
+		} catch (IOException e) {
+			result="ERROR READING FILE FROM HDFS:IOEXCEPTION";
+		}
 		return result;
 	}
 

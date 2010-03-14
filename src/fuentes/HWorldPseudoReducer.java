@@ -147,17 +147,19 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL GANADOR DEL TORNEO ES " +tournWinner);
 		if (((numElemProcessed - tournamentSize) % crossSize) == (crossSize - 1)) 
 		{
-			//Antes de cruzar los elementos, los mutamos para introducir diversidad...
-			for(int i=0;i < crossArray.length;i++) {
-				crossArray[i] = this.mutate(crossArray[i]);
-			}
+			/**Para introducir diversidad en la poblacion, vamos a mutar a los
+			 * individuos antes de cruzarlos...
+			 */
+//			for(int i=0;i < crossArray.length;i++) {
+//				crossArray[i] = this.mutate(crossArray[i]);
+//			}
 			Text[] newIndividuals = crossOver(crossArray);
 			try {
 				  for(int i=0;i < newIndividuals.length;i++)
 				  {
 					LOG.info("******ESCRITURA EN EL CROSSOVER*****");
 					LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR["+i+"]QUE ESCRIBO ES " +newIndividuals[i]);  
-				    context.write(newIndividuals[i], fitness);
+				    context.write(this.mutate(newIndividuals[i]), fitness);
 				  }
 				} catch(ArrayIndexOutOfBoundsException aioobe) {} catch (IOException e) {
 					e.printStackTrace();
@@ -211,8 +213,8 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		//LOG.info("EL PUNTO DE CORTE EN EL CROSSOVER ES: "+cutPoint);
 		
 		//Creamos las partes identicas a las de los padres...
-		String child1part1 = parent1.substring(0, cutPoint -1);
-		String child2part1 = parent2.substring(0, cutPoint -1);
+		String child1part1 = parent1.substring(0, cutPoint);
+		String child2part1 = parent2.substring(0, cutPoint);
 		
 		//Cruzamos el resto del descendiente...
 		String child1part2 = parent2.substring(cutPoint,parent2.length());
@@ -243,26 +245,37 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	private Text mutate(Text individual)
 	{
 		double random = r.nextDouble();
+		String sText = individual.toString();
+		String mutInd = "";
+		int beginIndex, endIndex = 0;
 		
 		//Si el numero aleatorio cae dentro del rango de mutacion, seguimos...
 		if (random < mutationRate) {
-			String sText = individual.toString();
-			int popLength = individual.getLength();
-			char[] arr = sText.toCharArray();  
-			
+			LOG.info("**MUTAMOS AL INDIVIDUO "+individual+" *****");
 			//Obtenemos dos posiciones aleatorias dentro del Individuo...
 			int r1 = (int) ((Math.random()*(sText.length()- 1))+ 1);
 			int r2 = (int) ((Math.random()*(sText.length()- 1))+ 1);
 			
+			if (r1 < r2) {
+				beginIndex = r1;
+				endIndex = r2;
+			}
+			else {
+				beginIndex = r2;
+				endIndex = r1;
+			}
+			
 			//Obtenemos los genes que se encuentran en esas posiciones...
 			char g1 = sText.charAt(r1);
+			LOG.info("**EL GEN QUE REEMPLAZO ES "+g1+" *****");
 			char g2 = sText.charAt(r2);
+			LOG.info("**EL GEN QUE REEMPLAZO ES "+g2+" *****");
 			
 			//Intercambiamos las posiciones de esos genes...
-			arr[r1] = g2;
-			arr[r2] = g1;
-			individual.set(arr.toString());
+			mutInd = sText.substring(0,r1);
+			mutInd.concat(g2+"").concat(sText.substring(beginIndex,endIndex)).concat(g1+"").concat(sText.substring(endIndex,sText.length()));
+			LOG.info("**EL INDIVIDUO MUTADO ES "+mutInd);
 		}
-		return individual;
+		return new Text(mutInd);
 	}
 }
