@@ -247,34 +247,39 @@ public class HWorldPseudoReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		double random = r.nextDouble();
 		String sText = individual.toString();
 		String mutInd = "";
-		int beginIndex, endIndex = 0;
+		int beginIndex = 0, endIndex = 0;
 		
 		//Si el numero aleatorio cae dentro del rango de mutacion, seguimos...
 		if (random < mutationRate) {
-			LOG.info("**MUTAMOS AL INDIVIDUO "+individual+" *****");
+			//LOG.info("**MUTAMOS AL INDIVIDUO "+individual+" *****");
 			//Obtenemos dos posiciones aleatorias dentro del Individuo...
 			int r1 = (int) ((Math.random()*(sText.length()- 1))+ 1);
 			int r2 = (int) ((Math.random()*(sText.length()- 1))+ 1);
 			
-			if (r1 < r2) {
-				beginIndex = r1;
-				endIndex = r2;
+			if (r1 == r2) {
+				mutInd = sText;
 			}
 			else {
-				beginIndex = r2;
-				endIndex = r1;
+				if (r1 < r2) {
+					beginIndex = r1;
+					endIndex = r2;
+				}
+				else {
+					beginIndex = r2;
+					endIndex = r1;
+				}
+				//Obtenemos los genes que se encuentran en esas posiciones...
+				char g1 = sText.charAt(r1);
+				char g2 = sText.charAt(r2);
+				
+				//Intercambiamos las posiciones de esos genes...
+				mutInd = sText.substring(0,beginIndex);
+				mutInd = mutInd.concat(g2+"").concat(sText.substring(beginIndex+1,endIndex)).concat(g1+"").concat(sText.substring(endIndex+1, sText.length()));
 			}
-			
-			//Obtenemos los genes que se encuentran en esas posiciones...
-			char g1 = sText.charAt(r1);
-			LOG.info("**EL GEN QUE REEMPLAZO ES "+g1+" *****");
-			char g2 = sText.charAt(r2);
-			LOG.info("**EL GEN QUE REEMPLAZO ES "+g2+" *****");
-			
-			//Intercambiamos las posiciones de esos genes...
-			mutInd = sText.substring(0,r1);
-			mutInd.concat(g2+"").concat(sText.substring(beginIndex,endIndex)).concat(g1+"").concat(sText.substring(endIndex,sText.length()));
-			LOG.info("**EL INDIVIDUO MUTADO ES "+mutInd);
+		}
+		//...si no, devolvemos el individuo tal cual...
+		else {
+			mutInd = sText;
 		}
 		return new Text(mutInd);
 	}

@@ -35,7 +35,7 @@ public class Coordinador implements ICoordinador {
 	
 	
 	@Override
-	public String readFromClientAndIterate(int numPop, int maxiter, int debug, int boolElit, String numProblem) throws IOException, ExecException, Exception {
+	public String readFromClientAndIterate(int numPop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial) throws IOException, ExecException, Exception {
 		
 		String bestIndividual="";
 		String []args = new String[1];
@@ -43,8 +43,12 @@ public class Coordinador implements ICoordinador {
 		FileSystem fs = FileSystem.get(conf);
 		Path oldPopulationsDirPath = new Path ("/user/hadoop-user/oldPopulations");
 		JobContext jCont = new JobContext(conf, null);	
-		//job.setJarByClass(fuentes.MRPGAMaster.class);
 		
+		//Simulamos el criterio de fin de ejecución por consecución del objetivo con un numero de iteraciones muy elevado
+		if (endCriterial == 1) {
+			maxiter = 100000;
+		}
+			
 		for (int i=0; i<maxiter; i++) {
 			
 			/**Si es la primera iteracion, subiremos la poblacion inicial, sino la de los
@@ -58,19 +62,20 @@ public class Coordinador implements ICoordinador {
 			if (i==0) this.uploadToHDFS(jCont, localPopulationFile.toString());		
 			
 			System.out.println("COORDINADOR: Llamo al master");
+			//Le paso los argumentos...
 			args[0] = numProblem;
+			//args[1] = Integer.toString(boolElit);
 			MRPGAMaster.main(args);
 			System.out.println("COORDINADOR: Acaba el master");
 			
-
-			/**Al acabar el Master, tendremos "idealmente" un fichero de texto con los
-			 * distintos resultados suboptimos de cada uno de los reduce...
+			/**Miramos si en la poblacion resultante tenemos el resultado objetivo... 
 			 */
-			System.out.println("COORDINADOR: Llamo al script de Pig");
-			//System.out.println("COORDINADOR: El getName es: "+subOptimalResultsFilePath.getName());
-			//El getName devuelve el nombre del fichero "part-r-00000"
-			//System.out.println("COORDINADOR: El toString es: "+subOptimalResultsFilePath.toString());
-			//El toString devuelve la ruta completa del fichero "/user/hadoop-user/output/part-r-00000"
+			System.out.println("COORDINADOR: BUSCO EL INDIVIDUO OBJETIVO");
+			hTable = this.searchBestIndividual(subOptimalResultsFilePath);
+			if (hTable.containsValue(0)) break;
+			System.out.println("COORDINADOR: NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+			
+			System.out.println("COORDINADOR: Llamo al script de Pig");		
 			this.runPigScript(subOptimalResultsFilePath.toString(),i,conf);
 			System.out.println("COORDINADOR: Acaba el script de Pig");
 			
@@ -79,7 +84,6 @@ public class Coordinador implements ICoordinador {
 			if (debug==1) {
 				fs.mkdirs(oldPopulationsDirPath);
 				Path targetFilePopPath = new Path ("/user/hadoop-user/oldPopulations/population_"+i+".txt");
-				//LOG.info("No file for job-history with " + id + " found in cache!");
 				if (i==0) {
 					//Movemos la poblacion inicial y la que obtiene Pig
 					Path initialFilePopPath =  new Path("/user/hadoop-user/oldPopulations/population.txt");
@@ -94,34 +98,23 @@ public class Coordinador implements ICoordinador {
 					//Copiamos el fichero como entrada de la siguiente iteracion...
 					FileUtil.copy(fs, currentPopulationFilePath, fs, targetFilePopPath, false, conf);
 				}
-			}
-			
-			/**Miramos si en la poblacion resultante después del script de Pig, tenemos el resultado... 
-			 */
-			hTable = this.searchBestIndividual(subOptimalResultsFilePath,conf);
-			if (hTable.containsValue(0)) break;	
+			}	
 		}
 		//Si no se introduce elitismo, imprimimos el mejor individuo que hayamos encontrado...
 		System.out.println("COORDINADOR: Imprimo el mejor individuo...");
-		if (boolElit == 0) {
-			bestIndividual = printBestIndividual(hTable.keys().toString(),(Integer)hTable.elements().nextElement());
-		}
-		else {
-			//Leemos el fichero del directorio donde se almacenan los mejores individuos de cada generacion...
-			bestIndividual = this.readFromHDFS("/user/hadoop-user/bestIndividuals/bestIndiv.txt");
-		}
-			 
-		return bestIndividual;
+		bestIndividual = printBestIndividual(hTable.keys().toString(),(Integer)hTable.elements().nextElement());
+		System.out.println("COORDINADOR: Acabo de imprimir el mejor individuo...");
+	return bestIndividual;
 	}
 
 	/**
-	 * Este metodo ejecutar codigo Pig Latin embebido en Java, de tal forma que recopile los
+	 * Este metodo ejecuta codigo Pig Latin embebido en Java, de tal forma que recopile los
 	 * distintos individuos sub-optimos que generen los "reduce" locales (que estaran almacenados
 	 * en un formato de documento de texto) y aplique sobre ellos las operaciones que necesitemos
 	 * (merge, order, filter y select -en principio...). Ademas le tendra que enviar el fichero
 	 * resultante con la poblacion optima de la iteracion al Coordinador, para que este se la 
 	 * pase al master y comience una nueva iteracion
-	 * @author Caba
+	 * @author Alberto Luengo Cabanillas
 	 *
 	 */
 	@Override
@@ -259,30 +252,28 @@ public class Coordinador implements ICoordinador {
 	}
 
 	@Override
-	public Hashtable<String, Integer> searchBestIndividual(Path optimalPath, Configuration conf)
-			throws IOException {
+	public Hashtable<String, Integer> searchBestIndividual(Path resultsPath) throws IOException {
 		Hashtable hTable = new Hashtable();
-		FileSystem hdfs = FileSystem.get(conf); 
+		FileSystem hdfs = FileSystem.get(new Configuration());
 		Scanner s = null;
-		
+	
 		//Leo el fichero alojado en el HDFS
 		//Validamos primero el path de entrada antes de leer del fichero
-		if (!hdfs.exists(optimalPath))
+		if (!hdfs.exists(resultsPath))
 		{
-			throw new IOException("El fichero especificado " +optimalPath + "no existe");
+			throw new IOException("El fichero especificado " +resultsPath.toString() + "no existe");
 		}
 		
-		if (!hdfs.isFile(optimalPath))
+		if (!hdfs.isFile(resultsPath))
 		{
-			throw new IOException("El fichero especificado "+optimalPath + "no existe");
+			throw new IOException("El fichero especificado "+resultsPath.toString() + "no existe");
 		}
 		
-		//BORRAR:
-		String prueba2 ="";
-		File prueba = new File(prueba2);
+		FSDataInputStream dis = hdfs.open(resultsPath);
+		BufferedReader br = new BufferedReader(new InputStreamReader(dis));
 		
 	    try {
-	    	s = new Scanner(prueba);
+	    	s = new Scanner(br);
 			while (s.hasNextLine()) {
 				String linea = s.nextLine();
 				Scanner sl = new Scanner(linea);
@@ -301,16 +292,16 @@ public class Coordinador implements ICoordinador {
 				if (valor==0) {
 					hTable.put(keyWord, valor);
 					break;
-				}
-				
+				}	
 			}
 	    }
 	    catch(Exception e){
 	    	e.printStackTrace();
 	    }finally{
-	    	// En el finally cerramos el fichero, para asegurarnos
-	    	// que se cierra tanto si todo va bien como si salta 
-	    	// una excepcion.
+	    	/**En el finally cerramos el fichero, para asegurarnos
+	    	 * que se cierra tanto si todo va bien como si salta 
+	    	 * una excepcion.
+	    	 */
 	    	try{                    
 	    		if( null != s ){   
 	    			s.close();     
@@ -319,6 +310,6 @@ public class Coordinador implements ICoordinador {
 	    		e2.printStackTrace();
 	    	}
 	    }
-		return hTable;
+	return hTable;
 	}
 }

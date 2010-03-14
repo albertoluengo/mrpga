@@ -209,7 +209,7 @@ public class Cliente {
 		String target ="";*/
 		
 		int population=1000;
-		int maxiter =3;
+		int maxiter =2;
 		int boolElit = 1;
 		float mutationrate=0.25f;
 		String target="Hello world!";
@@ -218,6 +218,8 @@ public class Cliente {
 		int debug = 1;
 		String result ="";
 		String numProblem = "1"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
+		mutation = (float)(rand * mutationrate);
+		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
 		
 		Coordinador coord = new Coordinador();
 	
@@ -253,7 +255,6 @@ public class Cliente {
 		System.err.println("Error fetching the mutation rate!");	
 		}*/
 		
-		mutation = (float)(rand * mutationrate);
 		
 		/*System.out.print("Introduzca la frase objetivo a conseguir: ");
 		try {
@@ -302,12 +303,12 @@ public class Cliente {
 		
 		//PASO 2.- El coordinador realizara las iteraciones pertinentes y devolvera el resultado buscado...
 		try {
-			result = coord.readFromClientAndIterate(population, maxiter, debug, boolElit, numProblem);
+			result = coord.readFromClientAndIterate(population, maxiter, debug, boolElit, numProblem, endCriterial);
 		} catch (IOException e) {
 			System.err.println("CLIENTE: Se ha producido un error de I/O en la conexion al HDFS");
 		}catch (Exception e) {
 		// TODO Auto-generated catch block
-		System.err.println("CLIENTE: Se ha producido un error ejecutando el codigo del Master");
+		System.err.println("CLIENTE: Se ha producido un error generico ejecutando el codigo del Master");
 		}
 		System.out.println("CLIENTE: El resultado que obtenemos es: "+result);
 		System.out.println("****FIN DE EJECUCION****");
