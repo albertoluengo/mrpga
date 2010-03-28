@@ -3,7 +3,7 @@
 
 = Introduction =
 
-Add your content here.
+Manual con el proceso completo para empezar a trabajar con Hadoop.
 
 
 = Details =
