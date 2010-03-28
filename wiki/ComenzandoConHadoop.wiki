@@ -1,0 +1,11 @@
+#summary Wiki de cómo comenzar a trabajar con Hadoop
+#labels Phase-Requirements,Phase-Implementation
+
+= Introduction =
+
+Add your content here.
+
+
+= Details =
+
+El contenido se muestra en: http://wiki.apache.org/hadoop/GettingStartedWithHadoop
