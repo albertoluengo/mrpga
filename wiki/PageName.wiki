@@ -1,0 +1,9 @@
+#summary TUTORIAL DE CONFIGURACIÓN DE HADOOP EN CLUSTERS DE UNO O VARIOS NODOS
+#labels Phase-Design
+
+= Introduction =
+
+
+= Details =
+
+http://www.michael-noll.com/wiki/Running_Hadoop_On_Ubuntu_Linux_%28Single-Node_Cluster%29
