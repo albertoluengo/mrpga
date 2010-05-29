@@ -35,13 +35,9 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	private Text subjectAsWord = new Text();
 	private String mapTaskId = "";
 	private String USERNAME = "";
-	
-	Configuration conf;
 	private Hashtable mapParameters = new Hashtable();
 	private int numElemProcessed = 0;
 	private static final Log LOG = LogFactory.getLog(TargetPhraseMapper.class.getName());
-	final String HDFS_MAPPER_CONFIGURATION_FILE="/user/"+USERNAME+"/data/mapper_configuration.dat";
-	
 	
 	
 	private IntWritable calculateFitness(String target, Text individual) {		
@@ -49,7 +45,7 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 		String textAsString = individual.toString();
 		int fitness=0;
 		for (int j=0; j<targetSize; j++) {
-			fitness += Math.abs((textAsString.charAt(j) - target.charAt(j)));
+			fitness += Math.abs((textAsString.toCharArray()[j] - target.charAt(j)));
 		}
 		return new IntWritable(fitness);
 	}
@@ -57,23 +53,23 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	@Override
 	protected void setup(Context cont)throws IOException {
 		//LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
-		conf = cont.getConfiguration();
+		Configuration conf = cont.getConfiguration();
 		mapTaskId = conf.get("mapred.task.id");
+		FileSystem hdfs = FileSystem.get(conf);
 		String users = conf.get("hadoop.job.ugi");
 		String[] commas = users.split(",");
 		USERNAME = commas[0];
-		LOG.info("EN EL MAPPER EL USERNAME ES "+USERNAME);
-		FileSystem hdfs = FileSystem.get(conf);
+		String HDFS_MAPPER_CONFIGURATION_FILE="/user/"+USERNAME+"/data/mapper_configuration.dat";
 		Path path = new Path(HDFS_MAPPER_CONFIGURATION_FILE);
 		//Validamos primero el path de entrada antes de leer del fichero
 		if (!hdfs.exists(path))
 		{
-			throw new IOException("El fichero especificado " +HDFS_MAPPER_CONFIGURATION_FILE + "no existe");
+			throw new IOException("El fichero especificado " +HDFS_MAPPER_CONFIGURATION_FILE + " no existe");
 		}
 		
 		if (!hdfs.isFile(path))
 		{
-			throw new IOException("El fichero especificado "+HDFS_MAPPER_CONFIGURATION_FILE + "no existe");
+			throw new IOException("El fichero especificado "+HDFS_MAPPER_CONFIGURATION_FILE + " no existe");
 		}
 		
 		FSDataInputStream dis = hdfs.open(path);
@@ -124,10 +120,10 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	 * fichero global el mejor de ellos (si queremos introducir elitismo)...
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, int bestFitness) throws IOException {
-		String bestFile = "/user/"+USERNAME+"/bestIndividuals/bestIndiv.txt";
 		String bestDir = "/user/"+USERNAME+"/bestIndividuals";
-		Path bestIndivPath = new Path(bestFile);
+		String bestFile = bestDir+"/bestIndiv.txt";
 		Path bestDirPath = new Path(bestDir);
+		Path bestIndivPath = new Path(bestFile);
 		FileSystem hdfs = FileSystem.get(new Configuration());
 		if (hdfs.exists(bestDirPath)) {
     		//Eliminamos el directorio de los mejores individuos primero...
