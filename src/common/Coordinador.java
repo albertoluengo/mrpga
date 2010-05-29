@@ -2,8 +2,10 @@ package common;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Scanner;
 
@@ -28,43 +30,118 @@ public class Coordinador implements ICoordinador {
 	 * @throws ExecException 
 	 * @throws Exception
 	 */
-	Path localPopulationFile=new Path("./population.txt");
-	String USERNAME = this.getUserName();
-	String hdfsPopString = "/user/"+USERNAME+"/input/population.txt";
-	Path hdfsPopulationPath=new Path(hdfsPopString);
-	String subOptString = "/user/"+USERNAME+"/output/part-r-00000"; 
-	Path subOptimalResultsFilePath= new Path(subOptString);
+	Path localPopulationFile;
+	String USERNAME;
+	String hdfsPopString;
+	Path hdfsPopulationPath;
+	String subOptString; 
+	Path subOptimalResultsFilePath;
 	//Path pigResultFile= new Path("/user/hadoop-user/output/pigResults/part-00000");
-	Hashtable<String, Integer> hTable = new Hashtable();
+	Hashtable<String, Integer> hTable;
+	
+	//Inicializo las variables en el constructor...
+	Coordinador() {
+		localPopulationFile=new Path("./population.txt");
+		USERNAME = this.getUserName();
+		hdfsPopString = "/user/"+USERNAME+"/input/population.txt";
+		hdfsPopulationPath=new Path(hdfsPopString);
+		subOptString = "/user/"+USERNAME+"/output/part-r-00000";
+		subOptimalResultsFilePath= new Path(subOptString);
+		hTable = new Hashtable();
+	}
 	
 	private String getUserName() {
 		Configuration conf = new Configuration();
 		String users = conf.get("hadoop.job.ugi");
 		String[] commas = users.split(",");
 		String userName = commas[0];
-		System.out.println("EN EL COORDINADOR EL USERNAME ES "+userName);
 		return userName;
 	}
+	
+	private void regenDirs(FileSystem fs) throws IOException {
+		Path outputPath = new Path("output");
+		Path inputPath = new Path("input");
+		Path dataPath = new Path("data");
+		Path bestPath = new Path("bestIndividuals");
+		Path oldPath = new Path("oldPopulations");
+	   
+	    try {
+	    	if (fs.exists(outputPath)) 
+	    		//Eliminamos el directorio de salida primero...
+	    		fs.delete(outputPath,true);
+	    	}
+	    catch (IOException ioe) {
+	    	System.err.println("COORD:Se ha producido un error borrando el dir de salida!");
+	    	System.exit(1);
+	    }
+	    
+	    try {
+	    	if (fs.exists(inputPath)) 
+	    		//Eliminamos el directorio de salida primero...
+	    		fs.delete(inputPath,true);
+	    	}
+	    catch (IOException ioe) {
+	    	System.err.println("COORD:Se ha producido un error borrando el dir de entrada!");
+	    	System.exit(1);
+	    }
+	    
+	    try {
+	    	if (fs.exists(dataPath)) 
+	    		//Eliminamos el directorio de salida primero...
+	    		fs.delete(dataPath,true);
+	    	}
+	    catch (IOException ioe) {
+	    	System.err.println("COORD:Se ha producido un error borrando el dir de data!");
+	    	System.exit(1);
+	    }
+	    
+	    try {
+	    	if (fs.exists(bestPath)) 
+	    		//Eliminamos el directorio de salida primero...
+	    		fs.delete(bestPath,true);
+	    	}
+	    catch (IOException ioe) {
+	    	System.err.println("COORD:Se ha producido un error borrando el dir de bestInd!");
+	    	System.exit(1);
+	    }
+	    
+	    try {
+	    	if (fs.exists(oldPath)) 
+	    		//Eliminamos el directorio de salida primero...
+	    		fs.delete(oldPath,true);
+	    	}
+	    catch (IOException ioe) {
+	    	System.err.println("COORD:Se ha producido un error borrando el dir de oldPops!");
+	    	System.exit(1);
+	    }
+	}
+	
+	
 	
 	@Override
 	public String readFromClientAndIterate(int numPop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial) throws IOException, ExecException, Exception {
 		
 		String bestIndividual="";
-		String []args = new String[1];
+		String []args = new String[2];
 		Configuration conf = new Configuration();
 		FileSystem fs = FileSystem.get(conf);
+		JobContext jCont = new JobContext(conf, null);	
 		
+		
+		//Lo primero que tiene hacer el Coordinador es regenerar la estructura de dirs...
+		this.regenDirs(fs);
 		
 		String oldPopString = "/user/"+USERNAME+"/oldPopulations";
 		Path oldPopulationsDirPath = new Path (oldPopString);
-		JobContext jCont = new JobContext(conf, null);	
+		
 		
 		//Simulamos el criterio de fin de ejecución por consecución del objetivo con un numero de iteraciones muy elevado
 		if (endCriterial == 1) {
 			maxiter = 100000;
 		}
 			
-		for (int i=0; i<maxiter; i++) {
+		for (int i=0; i<maxiter; i++) 
+		{
 			
 			/**Si es la primera iteracion, subiremos la poblacion inicial, sino la de los
 			 * descendientes. Si no es la primera iteracion tendra que ejecutar el codigo Pig para
@@ -72,32 +149,35 @@ public class Coordinador implements ICoordinador {
 			 */
 			String currPopString = "/user/"+USERNAME+"/input/population_"+i+".txt";
 			Path currentPopulationFilePath = new Path (currPopString);
-			System.out.println("COORDINADOR: La iteracion actual es la: "+i);
-
+			
 			//Si es la primera iteracion, leemos el fichero localmente...
 			if (i==0) this.uploadToHDFS(jCont, localPopulationFile.toString());		
 			
-			System.out.println("COORDINADOR: Llamo al master");
+			System.out.println("COORDINADOR["+i+"]: Llamo al master");
 			//Le paso los argumentos...
 			args[0] = numProblem;
-			//args[1] = Integer.toString(boolElit);
+			String iteration=i+"";
+			args[1] = iteration;
 			MRPGAMaster.main(args);
-			System.out.println("COORDINADOR: Acaba el master");
+			System.out.println("COORDINADOR["+i+"]: Acaba el master");
 			
 			/**Miramos si en la poblacion resultante tenemos el resultado objetivo... 
 			 */
-			System.out.println("COORDINADOR: BUSCO EL INDIVIDUO OBJETIVO");
-			hTable = this.searchBestIndividual(subOptimalResultsFilePath);
-			if (hTable.containsValue(0)) break;
-			System.out.println("COORDINADOR: NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+			System.out.println("COORDINADOR["+i+"]: BUSCO EL INDIVIDUO OBJETIVO...");			
+			hTable = this.generateIndividualsTable(subOptimalResultsFilePath);
+			if (hTable.containsValue(0)) 
+				break;
+			else 
+				System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
 			
-			System.out.println("COORDINADOR: Llamo al script de Pig");		
+			System.out.println("COORDINADOR["+i+"]: Llamo al script de Pig");		
 			this.runPigScript(subOptimalResultsFilePath.toString(),i,conf);
-			System.out.println("COORDINADOR: Acaba el script de Pig");
+			System.out.println("COORDINADOR["+i+"]: Acaba el script de Pig");
 			
 			//Si el parámetro "debug" está activado, vamos a crear un directorio nuevo en el que se van a ir colocando
 			//todas las poblaciones, para poder ver su evolución...
-			if (debug==1) {
+			if (debug==1) 
+			{
 				fs.mkdirs(oldPopulationsDirPath);
 				String targetString = "/user/"+USERNAME+"/oldPopulations/population_"+i+".txt"; 
 				Path targetFilePopPath = new Path (targetString);
@@ -119,9 +199,9 @@ public class Coordinador implements ICoordinador {
 				}
 			}	
 		}
-		//Si no se introduce elitismo, imprimimos el mejor individuo que hayamos encontrado...
+		//Si no se introduce elitismo, imprimimos el(los) mejor(es) individuo(s) que hayamos encontrado...
 		System.out.println("COORDINADOR: Imprimo el mejor individuo...");
-		bestIndividual = printBestIndividual(hTable.keys().toString(),(Integer)hTable.elements().nextElement());
+		bestIndividual = printBestIndividual(hTable);
 		System.out.println("COORDINADOR: Acabo de imprimir el mejor individuo...");
 	return bestIndividual;
 	}
@@ -140,7 +220,7 @@ public class Coordinador implements ICoordinador {
 	public void runPigScript(String inputFile, int iteration, Configuration conf) throws ExecException, IOException {
 		
 		//Tenemos que leer un fichero del HDFS
-		System.out.println("COORDINADOR: Dentro del script de Pig");
+		System.out.println("COORDINADOR["+iteration+"]: Dentro del script de Pig");
 		FileSystem fs = FileSystem.get(conf);
 		Path resultPath = new Path("pigResults");
 	    
@@ -151,7 +231,7 @@ public class Coordinador implements ICoordinador {
 	    	}
 	    }
 	    catch (IOException ioe) {
-	    	System.err.println("COORDINADOR:Se ha producido un Error borrando el dir de salida de Pig");
+	    	System.err.println("COORDINADOR["+iteration+"]:Se ha producido un error borrando el dir de salida de Pig");
 	    	System.exit(1);
 	    }
 		
@@ -225,7 +305,7 @@ public class Coordinador implements ICoordinador {
 		fs.copyFromLocalFile(false, true, new Path(LOCAL_REDUCER_CONFIGURATION_FILE), hdfsConfRedPath);
 		
 		//Creamos el directorio para ir almacenando los mejores individuos de cada iteracion...
-		String bestIndString = "/user/"+USERNAME+"/hadoop-user/bestIndividuals";
+		String bestIndString = "/user/"+USERNAME+"/bestIndividuals";
 		fs.mkdirs(new Path(bestIndString));
 		
 		//Mandamos el fichero de configuracion a todos los nodos...
@@ -234,8 +314,28 @@ public class Coordinador implements ICoordinador {
 	}
 
 	@Override
-	public String printBestIndividual(String bestIndividual, int bestFitness) {
-		String result = "Best individual: '"+bestIndividual+"' with fitness: "+bestFitness+"";
+	public String printBestIndividual(Hashtable hashTable) {
+		Hashtable bestTable = new Hashtable();
+		Enumeration claves = hashTable.keys();
+		int fitValue = 0;
+		//Inicializamos el fitness al del primer individuo...
+		int bestFitness = Integer.parseInt(hashTable.elements().nextElement().toString());
+		while (claves.hasMoreElements())
+		{
+			String clave = (String)claves.nextElement();
+			fitValue = Integer.parseInt(hashTable.get(clave).toString());
+			//System.out.println("LA CLAVE ES "+clave);
+			//System.out.println("EL FITVALUE ES "+fitValue);
+			if (fitValue < bestFitness)
+			{
+				bestTable.clear();
+				bestTable.put(clave, fitValue);
+				bestFitness = fitValue;					
+			}
+			else if (fitValue == bestFitness)
+				bestTable.put(clave, fitValue);
+		}
+		String result = "Best individual(s) found is (are): "+bestTable;
 		return result;
 	}
 	
@@ -272,7 +372,7 @@ public class Coordinador implements ICoordinador {
 	}
 
 	@Override
-	public Hashtable<String, Integer> searchBestIndividual(Path resultsPath) throws IOException {
+	public Hashtable<String, Integer> generateIndividualsTable(Path resultsPath) throws IOException {
 		Hashtable hTable = new Hashtable();
 		FileSystem hdfs = FileSystem.get(new Configuration());
 		Scanner s = null;
@@ -300,19 +400,14 @@ public class Coordinador implements ICoordinador {
 				/**La expresion regular que nos indica que nuestro delimitador es uno o
 				 * varios espacios es \\s.
 				 */
-				sl.useDelimiter("\\s");
+				sl.useDelimiter("\t");
 				/**Ahora metemos el primer elemento que encontramos (la palabra) como
 				 * clave del Hashtable y el segundo (el fitness) como valor
 				 */
 				String keyWord = sl.next();
 				String fitness = sl.next();
 				int valor = Integer.parseInt(fitness);
-				
-				/**Hemos llegado al final*/
-				if (valor==0) {
-					hTable.put(keyWord, valor);
-					break;
-				}	
+				hTable.put(keyWord, valor);
 			}
 	    }
 	    catch(Exception e){
