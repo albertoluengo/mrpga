@@ -28,7 +28,7 @@ public interface ICoordinador {
 	public void uploadToHDFS(JobContext cont, String population) throws IOException;
 	public void replacePopulationFile(Path original, Path actual) throws IOException;
 	public void runPigScript(String filePath, int iterations, Configuration conf)throws ExecException, IOException;
-	public String printBestIndividual(String individual, int fitness);
-	public Hashtable<String, Integer> searchBestIndividual(Path filePath)throws IOException;
+	public String printBestIndividual(Hashtable hashTable);
+	public Hashtable<String, Integer> generateIndividualsTable(Path filePath)throws IOException;
 	public String readFromHDFS(String stringPath);
 }
