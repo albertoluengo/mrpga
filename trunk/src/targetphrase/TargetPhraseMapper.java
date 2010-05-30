@@ -33,7 +33,6 @@ import org.apache.hadoop.mapreduce.Reducer.Context;
 public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> {
 	
 	private Text subjectAsWord = new Text();
-	private String mapTaskId = "";
 	private String USERNAME = "";
 	private Hashtable mapParameters = new Hashtable();
 	private int numElemProcessed = 0;
@@ -54,7 +53,6 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	protected void setup(Context cont)throws IOException {
 		//LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
 		Configuration conf = cont.getConfiguration();
-		mapTaskId = conf.get("mapred.task.id");
 		FileSystem hdfs = FileSystem.get(conf);
 		String users = conf.get("hadoop.job.ugi");
 		String[] commas = users.split(",");
@@ -125,13 +123,21 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 		Path bestDirPath = new Path(bestDir);
 		Path bestIndivPath = new Path(bestFile);
 		FileSystem hdfs = FileSystem.get(new Configuration());
+		/**
+		 * HDFS no permite que multiples mappers escriban en el mismo fichero,
+		 * por lo que que creamos uno por cada mapper...
+		 */
 		if (hdfs.exists(bestDirPath)) {
     		//Eliminamos el directorio de los mejores individuos primero...
     		hdfs.delete(bestDirPath,true);
     	}
 		FSDataOutputStream dos = hdfs.create(bestIndivPath);
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dos));
-		bw.write(bestIndiv.toString());
+		/**
+		 * Escribo el valor del individuo y su fitness, para que luego el Reducer lo lea...
+		 */
+		bw.write(bestIndiv.toString()+"\n");
+		bw.write(bestFitness+"\n");
 		bw.close();
 	}	
 	

@@ -58,9 +58,11 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	private Hashtable[]tournArray = new Hashtable [tournamentSize];
 	private String[][]crossArray = new String [tournamentSize][tournamentSize];
 	private Hashtable parameters = new Hashtable();
+	private Hashtable bestIndivTable = new Hashtable();
 	private String USERNAME = "";
 	private Random r;
 	private Text bestInd = new Text("");
+	private int bestIndFitness = 0;
 	private double mutationRate, crossProb = 0.0;
 	private String targetPhrase ="";
 	private Vector bufferWinners = new Vector();
@@ -104,13 +106,16 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		BufferedReader br2 = new BufferedReader(new InputStreamReader(dis2));
 		String strLine;
 		String[]keys = {"numPopulation","maxIterations","boolElit","mutationRate","mutation","crossProb","targetPhrase"};
-		int index=0;
+		String[]bestIndKeys = {"bestIndiv","bestFitness"};
+		int index = 0;
+		int index2=0;
 		while ((strLine = br.readLine()) != null)   {
 			parameters.put(keys[index], strLine);
 		    index++;
 		  }
 		while ((strLine = br2.readLine()) != null)   {
-			bestInd = new Text(strLine);
+			bestIndivTable.put(bestIndKeys[index2], strLine);
+		    index2++;
 		  }
 		
 		dis.close();
@@ -125,6 +130,23 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		tournIndiv = new String[tournamentSize];
 		//tournamentArray = new String[2*tournamentSize][targetPhrase.length()];
 		tournamentArray = new String[tournamentSize][tournamentSize];
+		
+		
+		//Si esta activada la opcion del elitismo, escribimos el mejor elemento en la salida...
+		if (boolElit == 1) {
+			bestInd = new Text((String)bestIndivTable.get("bestIndiv"));
+			bestIndFitness = Integer.parseInt((String)bestIndivTable.get("bestFitness"));
+			try {
+				cont.write(bestInd, new IntWritable(bestIndFitness));
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
+		
+		
+		
 	}
 	
 	
@@ -133,14 +155,11 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	{
 		
 		Iterator<IntWritable> valuesIter =values.iterator();
-
-		/**TODO:Si esta presente el elitismo, lo vamos a escribir directamente en el contexto
-		 * con un fitness cualquiera
-		 */
+		
 		while (valuesIter.hasNext()) 
 		{
 			fitness = valuesIter.next();
-			LOG.info("EL INDIVIDUO "+numElemProcessed+" TIENE CLAVE "+key.toString());
+			//LOG.info("EL INDIVIDUO "+numElemProcessed+" TIENE CLAVE "+key.toString());
 			
 //			tournIndiv[numElemProcessed%tournamentSize + tournamentSize] = key.toString();
 //			tournamentFitness[numElemProcessed%tournamentSize + tournamentSize] = fitness.get();
@@ -172,20 +191,20 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 				for (int a = 0; a<tournArray.length;a++) {
 					String[]stringArr = tournamentArray[a];
 					for (int b = 0; b<stringArr.length;b++) {
-						LOG.info("LOS ELEMENTOS DEL TOURNARRAY "+b+" VALE "+stringArr[b]);
+						//LOG.info("LOS ELEMENTOS DEL TOURNARRAY "+b+" VALE "+stringArr[b]);
 					}
 				}
 				//tournamentGroupFitness[numElemProcessed%tournamentSize + cont] = bestGroupFitness;
 				tournamentGroupFitness[cont] = bestGroupFitness;
 				
-				LOG.info("TOURNAMENTGROUPFITNESS["+cont+"] METO "+tournamentGroupFitness[cont]);
+				//LOG.info("TOURNAMENTGROUPFITNESS["+cont+"] METO "+tournamentGroupFitness[cont]);
 				cont++;
 				//LOG.info("CONT VALE "+cont);
 			}
 			//Cuando tengamos [tournamentSize] elementos en el array de arrays celebramos el torneo...
 			if ((cont ==tournamentSize) && (numTournaments == 0))
 			{
-				LOG.info("*****CELEBRO EL PRIMER TORNEO******");
+				//LOG.info("*****CELEBRO EL PRIMER TORNEO******");
 //				for (int a = 0; a<tournArray.length;a++) {
 //					String[]stringArr = tournamentArray[a];
 //					for (int b = 0; b<stringArr.length;b++) {
@@ -203,7 +222,7 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 			
 			if (numTournaments!=0) 
 			{
-				LOG.info("*****CELEBRO EL RESTO DE TORNEOS******");
+				//LOG.info("*****CELEBRO EL RESTO DE TORNEOS******");
 				//Si no es el primer torneo que celebramos, solo esperamos
 				//por el siguiente participante (5 elementos más) y sobreescribimos...
 				int bestGroupFitness = 99999;
@@ -221,22 +240,21 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		}
 		//Si todos los elementos han sido procesados...
 		if(numElemProcessed == numPop) {
-			closeAndWrite(fitness, context);
+			closeAndWrite(context);
 		}	
 	}
 	
-	public void closeAndWrite(IntWritable fitness, Context context) throws IOException, InterruptedException {
+	public void closeAndWrite(Context context) throws IOException, InterruptedException {
 		LOG.info("*****TODOS LOS ELEMENTOS HAN SIDO PROCESADOS******");
 		
+		int bestGroupFitness = 99999;
 		for (int i = 0; i < tournIndiv.length; i++) {
-			tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i]; 
+			tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+			if (tournamentFitness[i] < bestGroupFitness)
+				bestGroupFitness = tournamentFitness[i];
 		}
+		tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
 		selectionAndCrossover(numElemProcessed, tournamentArray, context);
-		
-		//Si esta activada la opcion del elitismo, escribimos el mejor elemento en la salida...
-		if (boolElit == 1) {
-			context.write(bestInd, fitness);
-		}
 	}
 	
 	private void selectionAndCrossover(int numElemProcessed, String[][]tournArray,Context context){
@@ -244,43 +262,42 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		String[][] newIndividuals = null;
 		crossArray[numElemProcessed % crossSize] = tournWinner; 
 		//LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL GANADOR DEL TORNEO ES " +tournWinner);
-		if (((numElemProcessed - tournamentSize) % crossSize) == (crossSize - 1)) 
+		//LOG.info("EL TAMANHO DE LA POBLACION ES "+numPop);
+		if (((numElemProcessed - tournamentSize) % crossSize) == (crossSize - 1) && (bufferWinners.size() <= numPop)) 
 		{
-			/**Para no caer en mesetas o maximos locales, vamos a mutar a los
-			 * individuos antes de cruzarlos...
-			 */
 			if (crossProb < r.nextDouble()) 
 				newIndividuals = crossOver();
 			else
 				newIndividuals = crossArray;
 			try 
 			{
-				  for(int i=0;i < crossSize;i++)
-				  {
-					LOG.info("******ESCRITURA EN SELECTIONANDCROSSOVER*****");
-					String[] individuals = newIndividuals[i];
-					for (int j=0;j<individuals.length;j++)
-					{
-						/**
-						 * Tengo que mirar si el individuo ya existe en el "buffer";
-						 * es decir, si salio como ganador de un torneo una vez y
-						 * vuelve a salir, no se escribe...
-						 */
-						if (bufferWinners.contains(individuals[j]))
-							continue;
-						//Escribimos en el fichero y en el buffer de ganadores...
-						LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR["+j+"]QUE ESCRIBO ES " +individuals[j]);
-						Text indiv = new Text(individuals[j]);
-						//Contemplo el caso de la mutacion...
-						if (mutation == 1)
-							context.write(this.mutate(indiv), fitness);
-						else
-							context.write(indiv, fitness);
-						//Escribo en el buffer de ganadores...
-						LOG.info("ESCRIBO EN EL BUFFER DE GANADORES");
-						bufferWinners.addElement(individuals[j]);
-					}
-				  }
+			  for(int i=0;i < crossSize;i++)
+			  {	  
+				//LOG.info("******ESCRITURA EN SELECTIONANDCROSSOVER*****");
+				String[] individuals = newIndividuals[i];
+				for (int j=0;j<individuals.length;j++)
+				{
+					/**
+					 * Tengo que mirar si el individuo ya existe en el "buffer";
+					 * es decir, si salio como ganador de un torneo una vez y
+					 * vuelve a salir, no se escribe...
+					 */
+					if (bufferWinners.contains(individuals[j]))
+						continue;
+					//Escribimos en el fichero y en el buffer de ganadores...
+					LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR["+j+"]QUE ESCRIBO ES " +individuals[j]);
+					Text indiv = new Text(individuals[j]);
+					/**Para no caer en mesetas o maximos locales, vamos a mutar a los
+					 * individuos antes de cruzarlos...
+					 */
+					if (mutation == 1)
+						context.write(this.mutate(indiv), fitness);
+					else
+						context.write(indiv, fitness);
+					//Escribo en el buffer de ganadores...
+					bufferWinners.addElement(individuals[j]);
+				}
+			  }
 			}
 			catch(ArrayIndexOutOfBoundsException aioobe) {
 				aioobe.printStackTrace();
@@ -306,7 +323,7 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		long bestFitness = 999999;
 		
 		for (int i=0;i <tournamentSize ;i++) {
-			LOG.info("TOURNAMENTGROUPFITNESS["+i+"] VALE "+tournamentGroupFitness[i]);
+			//LOG.info("TOURNAMENTGROUPFITNESS["+i+"] VALE "+tournamentGroupFitness[i]);
 			if (tournamentGroupFitness[i] < bestFitness)
 			{
 				bestFitness = tournamentGroupFitness[i];
@@ -314,9 +331,9 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 				tournWinner = tournArray[i];
 			}
 		}
-		LOG.info("EL MEJOR FITNESS DENTRO DEL TOURNSELECTION ES "+bestFitness);
+		//LOG.info("EL MEJOR FITNESS DENTRO DEL TOURNSELECTION ES "+bestFitness);
 		for (int aux = 0; aux<tournWinner.length;aux++) {
-			LOG.info("TOURNWINNER "+aux+" VALE "+tournWinner[aux]);
+			//LOG.info("TOURNWINNER "+aux+" VALE "+tournWinner[aux]);
 		}
 		
 		return tournWinner;
@@ -381,7 +398,7 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		
 		//Si el numero aleatorio cae dentro del rango de mutacion, seguimos...
 		if (random < mutationRate) {
-			LOG.info("**MUTAMOS AL INDIVIDUO "+individual+" *****");
+			//LOG.info("**MUTAMOS AL INDIVIDUO "+individual+" *****");
 			//Obtenemos dos posiciones aleatorias dentro del Individuo...
 			int r1 = (int) ((Math.random()*(sText.length()- 1))+ 1);
 			int r2 = (int) ((Math.random()*(sText.length()- 1))+ 1);
@@ -405,6 +422,7 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 				//Intercambiamos las posiciones de esos genes...
 				mutInd = sText.substring(0,beginIndex);
 				mutInd = mutInd.concat(g2+"").concat(sText.substring(beginIndex+1,endIndex)).concat(g1+"").concat(sText.substring(endIndex+1, sText.length()));
+				//LOG.info("****** EL INDIVIDUO MUTADO ES "+mutInd+" *****");
 			}
 		}
 		//...si no, devolvemos el individuo tal cual...

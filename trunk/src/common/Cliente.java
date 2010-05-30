@@ -206,13 +206,13 @@ public class Cliente {
 		float mutation = 0;
 		String target ="";*/
 		
-		int population= 512;
-		int maxiter = 1;
+		int population= 2050;
+		int maxiter = 3;
 		int boolElit = 1;
 		String target="Hello_world!";
 		//Como se van a generar individuos con un numero de genes igual a la longitud
 		//de la palabra objetivo, su posibilidad de mutación será su inversa...
-		int mutation = 0;
+		int mutation = 1;
 		float mutationrate= 1.0f/(float)target.length();
 		double crossProb = 0.6;
 		int debug = 1;
