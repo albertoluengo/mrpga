@@ -132,21 +132,19 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		tournamentArray = new String[tournamentSize][tournamentSize];
 		
 		
-		//Si esta activada la opcion del elitismo, escribimos el mejor elemento en la salida...
+		/**Si esta activada la opcion del elitismo, 
+		 * escribimos el mejor elemento en la salida...
+		 */
 		if (boolElit == 1) {
 			bestInd = new Text((String)bestIndivTable.get("bestIndiv"));
 			bestIndFitness = Integer.parseInt((String)bestIndivTable.get("bestFitness"));
 			try {
 				cont.write(bestInd, new IntWritable(bestIndFitness));
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			
 		}
-		
-		
-		
 	}
 	
 	

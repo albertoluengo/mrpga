@@ -119,7 +119,7 @@ public class Coordinador implements ICoordinador {
 	
 	
 	@Override
-	public String readFromClientAndIterate(int numPop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial) throws IOException, ExecException, Exception {
+	public String readFromClientAndIterate(int numPop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number) throws IOException, ExecException, Exception {
 		
 		String bestIndividual="";
 		String []args = new String[2];
@@ -165,10 +165,36 @@ public class Coordinador implements ICoordinador {
 			 */
 			System.out.println("COORDINADOR["+i+"]: BUSCO EL INDIVIDUO OBJETIVO...");			
 			hTable = this.generateIndividualsTable(subOptimalResultsFilePath);
-			if (hTable.containsValue(0)) 
-				break;
-			else 
-				System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+			
+			/**
+			 * Si el problema es el de 'frase objetivo',
+			 * su fitness ideal sera 0
+			 */
+			if (numProblem == "1")
+				if (hTable.containsValue(0)) 
+					break;
+				else 
+					System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+			
+			/**
+			 * Si el problema es 'OneMax', su fitness ideal 
+			 * sera la longitud total del individuo a 1
+			 */
+			if (numProblem == "2")
+				if (hTable.containsValue(gene_number)) 
+					break;
+				else 
+					System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+			
+			/**
+			 * Si el problema es 'PPeaks', 
+			 * su fitness ideal sera 1 (el individuo mas cercano a un pico dado)...
+			 */
+			if (numProblem == "3")
+				if (hTable.containsValue(1)) 
+					break;
+				else 
+					System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
 			
 			System.out.println("COORDINADOR["+i+"]: Llamo al script de Pig");		
 			this.runPigScript(subOptimalResultsFilePath.toString(),i,conf);
@@ -201,7 +227,7 @@ public class Coordinador implements ICoordinador {
 		}
 		//Si no se introduce elitismo, imprimimos el(los) mejor(es) individuo(s) que hayamos encontrado...
 		System.out.println("COORDINADOR: Imprimo el mejor individuo...");
-		bestIndividual = printBestIndividual(hTable);
+		bestIndividual = printBestIndividual(hTable,numProblem);
 		System.out.println("COORDINADOR: Acabo de imprimir el mejor individuo...");
 	return bestIndividual;
 	}
@@ -314,7 +340,7 @@ public class Coordinador implements ICoordinador {
 	}
 
 	@Override
-	public String printBestIndividual(Hashtable hashTable) {
+	public String printBestIndividual(Hashtable hashTable, String numProblem) {
 		Hashtable bestTable = new Hashtable();
 		Enumeration claves = hashTable.keys();
 		int fitValue = 0;
@@ -326,14 +352,38 @@ public class Coordinador implements ICoordinador {
 			fitValue = Integer.parseInt(hashTable.get(clave).toString());
 			//System.out.println("LA CLAVE ES "+clave);
 			//System.out.println("EL FITVALUE ES "+fitValue);
-			if (fitValue < bestFitness)
+			
+			/**
+			 * Si es el problema 'frase objetivo' 
+			 * el mejor fitness sera el más pequeño...
+			 */
+			if (numProblem == "1")
 			{
-				bestTable.clear();
-				bestTable.put(clave, fitValue);
-				bestFitness = fitValue;					
+				if (fitValue < bestFitness)
+				{
+					bestTable.clear();
+					bestTable.put(clave, fitValue);
+					bestFitness = fitValue;					
+				}
+				else if (fitValue == bestFitness)
+					bestTable.put(clave, fitValue);
 			}
-			else if (fitValue == bestFitness)
-				bestTable.put(clave, fitValue);
+			
+			/**
+			 * El resto de los problemas 
+			 * el mejor fitness sera el más alto...
+			 */
+			else 
+			{
+				if (fitValue > bestFitness)
+				{
+					bestTable.clear();
+					bestTable.put(clave, fitValue);
+					bestFitness = fitValue;					
+				}
+				else if (fitValue == bestFitness)
+					bestTable.put(clave, fitValue);
+			}
 		}
 		String result = "Best individual(s) found is (are): "+bestTable;
 		return result;
@@ -406,8 +456,9 @@ public class Coordinador implements ICoordinador {
 				 */
 				String keyWord = sl.next();
 				String fitness = sl.next();
-				int valor = Integer.parseInt(fitness);
-				hTable.put(keyWord, valor);
+				double valor = Double.parseDouble(fitness);
+				int valInt = (int)valor;
+				hTable.put(keyWord, valInt);
 			}
 	    }
 	    catch(Exception e){
