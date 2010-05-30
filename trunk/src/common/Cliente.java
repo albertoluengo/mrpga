@@ -46,29 +46,24 @@ public class Cliente {
 			return individuo;
 			}
 		
-	private static String generateRandomBinaryString(String target) {
+	private static String generateRandomBinaryString(int geneNumber) {
 		String cadenaAleatoria ="";
-		int sizeTarget=target.length();
-		//long milis = new java.util.GregorianCalendar().getTimeInMillis();
-		//Random r = new Random(milis);
-		Random r = new Random(System.nanoTime());
-		int d = 2; // nº de decimales
-		int u = 10^d; // Hay que usar la función para potencias.
-		float i = 1 + r.nextFloat() % u;
-		float q = i/u; //devuelve entre 0 y 1.
 		int cont=0;
-			while ( cont < sizeTarget){
-				if ((q < 0.5))
+		double prob =0.0;
+			while (cont < geneNumber)
+			{
+				prob = java.lang.Math.random();
+				if ((prob <= 0.5))
 					cadenaAleatoria += '0';
 				else
 					cadenaAleatoria += '1';
-				i ++;
+				cont ++;
 			}
 		return cadenaAleatoria;
 		}
 	
 	
-	private static void generatePopulationFile(String target, int sizePop, int numProblem) {
+	private static void generatePopulationFile(String target, int sizePop, int geneNumber, int numProblem) {
 		
 		//Instanciamos el fichero...
 		String sFile ="population.txt";
@@ -91,7 +86,7 @@ public class Cliente {
 				e.printStackTrace();
 			}
 		}
-		//Escribimos en el fichero previamente creado
+		//Escribimos en el fichero previamente creado...
 		try {
 			BufferedWriter bw= new BufferedWriter(new FileWriter(sFile));
 			System.out.println("CLIENTE: Escribiendo en fichero de poblacion...");
@@ -99,10 +94,11 @@ public class Cliente {
 			int i=0;
 			while (i <sizePop) {
 				if (numProblem == 1) //Caso del problema de la 'frase objetivo'
-					//Generamos la palabra descendiente
+					//Generamos la palabra descendiente...
 					word=generateRandomString(target);
 				else
-					word=generateRandomBinaryString(target);
+					//Generamos el individuo binario...
+					word=generateRandomBinaryString(geneNumber);
 				//Escribimos a fichero...	
 				bw.write(word +"\r\n");
 				i++;
@@ -115,7 +111,7 @@ public class Cliente {
 	
 	//Creamos el fichero de configuracion que debe subir el coordinador al HDFS para que el
 	//Master lo distribuya entre los nodos trabajadores...
-	private static void generateMapperConfigurationFile(String target, int numPop, int boolElit, int debug) {
+	private static void generateMapperConfigurationFile(String target, int numPop, int boolElit, int debug,int gene_length) {
 		
 		//Instanciamos el fichero...
 		String sFile ="mapper_configuration.dat";
@@ -144,8 +140,10 @@ public class Cliente {
 			System.out.println("CLIENTE: Escribiendo en fichero de configuracion para Mappers...");
 			bw.write(target +"\r\n");
 			bw.write(numPop +"\r\n");
-			bw.write(debug +"\n");
 			bw.write(boolElit +"\r\n");
+			bw.write(debug +"\r\n");
+			bw.write(gene_length +"\r\n");
+			
 			//Cerramos el fichero
 			System.out.println("CLIENTE: Cerrando fichero de configuracion para Mappers...");
 			bw.close();
@@ -206,19 +204,54 @@ public class Cliente {
 		float mutation = 0;
 		String target ="";*/
 		
-		int population= 2050;
-		int maxiter = 3;
+		
+		
+		//PARAMETROS PROBLEMA TARGET_PHRASE
+//		int population= 2050;
+//		int maxiter = 3;
+//		int boolElit = 1;
+//		int gene_number = 0;
+//		String target="Hello_world!";
+//		//Como se van a generar individuos con un numero de genes igual a la longitud
+//		//de la palabra objetivo, su posibilidad de mutación será su inversa...
+//		int mutation = 1;
+//		float mutationrate= 1.0f/(float)target.length();
+//		double crossProb = 0.6;
+//		int debug = 1;
+//		String result ="";
+//		String numProblem = "1"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
+//		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
+		
+		
+		//PARAMETROS PROBLEMA ONEMAX
+//		int population= 515;
+//	    int gene_number = 128;
+//		int maxiter = 2;
+//		int boolElit = 1;
+//		int mutation = 1;
+//		float mutationrate= 1.0f/(float)gene_number;
+//		double crossProb = 0.6;
+//		int debug = 1;
+//		String result ="";
+//		String numProblem = "2"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
+//		String target = "";
+//		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
+		
+		//PARAMETROS PROBLEMA PPEAKS
+		int population= 515;
+	    int gene_number = 128;
+		int maxiter = 2;
 		int boolElit = 1;
-		String target="Hello_world!";
-		//Como se van a generar individuos con un numero de genes igual a la longitud
-		//de la palabra objetivo, su posibilidad de mutación será su inversa...
 		int mutation = 1;
-		float mutationrate= 1.0f/(float)target.length();
+		float mutationrate= 1.0f/(float)gene_number;
 		double crossProb = 0.6;
 		int debug = 1;
 		String result ="";
-		String numProblem = "1"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
+		String numProblem = "3"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
+		String target = "";
 		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
+		
+		
 		
 		Coordinador coord = new Coordinador();
 	
@@ -291,8 +324,8 @@ public class Cliente {
 		/**PASO 1.- Generamos la poblacion inicial y los ficheros de configuracion 
 		 * para los nodos Worker... 
 		 */
-		generatePopulationFile(target,population,Integer.parseInt(numProblem));
-		generateMapperConfigurationFile(target, population, boolElit, debug);
+		generatePopulationFile(target,population,gene_number,Integer.parseInt(numProblem));
+		generateMapperConfigurationFile(target, population, boolElit, debug,gene_number);
 		generateReducerConfigurationFile(population, maxiter,boolElit,mutationrate,mutation,crossProb,target); 
 		
 		
@@ -323,7 +356,7 @@ public class Cliente {
 		System.out.println("CLIENTE: Lanzando trabajo...");
         final long startTime = System.currentTimeMillis();
 		try {
-			result = coord.readFromClientAndIterate(population, maxiter, debug, boolElit, numProblem, endCriterial);
+			result = coord.readFromClientAndIterate(population, maxiter, debug, boolElit, numProblem, endCriterial,gene_number);
 		} catch (IOException e) {
 			System.err.println("CLIENTE: Se ha producido un error de I/O en la conexion al HDFS");
 		}catch (Exception e) {
