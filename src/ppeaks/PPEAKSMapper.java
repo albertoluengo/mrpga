@@ -42,7 +42,7 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	private static final Log LOG = LogFactory.getLog(PPEAKSMapper.class.getName());
 	
 	// Numero de picos
-	private static int peaks_number = 500;
+	private static int peaks_number = 200;
 	// Vector de picos
 	private static short peak[][];
 	// Longitud de los cromosomas...
@@ -54,32 +54,49 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	
 	
 	private DoubleWritable calculateFitness(String individual) {
+		LOG.info("***********DENTRO DEL FITNESS**********");
 		double fitness = 0.0;
 	    //Bits en comun con el pico mas cercano
-	    int nearest_peak = 0;
-	    int aux = 0, i = 0, peaks = 0;
-		//Para cada pico...
+	    double nearest_peak = 999.0;
+	    int i = 0, peaks = 0, distHamming = 0;
+	    double currentDistance = 0.0;
+	    double []distances = new double[peaks_number];
+	    //LOG.info("PEAKS NUMBER ES "+peaks_number);
+	    //LOG.info("GENE LENGTH ES "+gene_length);
 	    for(peaks=0; peaks<peaks_number; peaks++)
 	    {
 	      //...calculamos la distancia Hamming...
-	      for(aux=0,i=0;i<(individual.length()-1);i++) 
-	    	  //LOG.info("EL PICO VALE " +peak[peaks][i]);
-	    	  if(peak[peaks][i]!=Integer.parseInt(individual.charAt(i)+""));	
-	    		  aux++;
-
-	      if((gene_length-aux)>nearest_peak)	
-	    	  nearest_peak = gene_length-aux;
+	      distHamming = 0;	
+	      for(int pos=0;pos<gene_length;pos++)
+	      {
+	    	  short current_peak = peak[peaks][pos];
+    		  if(current_peak!=Integer.parseInt(individual.charAt(pos)+""))
+    			  distHamming++;
+	      }
+	      distances[peaks] = distHamming;
+	      //LOG.info("DISTANCE["+peaks+"] VALE "+distances[peaks]);
 	    }
-
-	    fitness = (double)nearest_peak / (double)gene_length;
-	    LOG.info("MAPPER: EL FITNESS DEL INDIVIDUO ES"+fitness);
+	    
+	    //Buscamos ahora el valor mas pequeño...
+	    for (i=0;i<distances.length;i++)
+	    {
+	    	currentDistance = distances[i];
+	    	//LOG.info("LA DISTANCIA ACTUAL ES "+currentDistance);
+	    	//LOG.info("NEAREST PEAK VALE "+nearest_peak);
+	    	if (currentDistance < nearest_peak)
+	    		nearest_peak = currentDistance;
+	    }
+	    //LOG.info("MAPPER: EL PICO MAS CERCANO ES "+nearest_peak);
+	    fitness = (double)(nearest_peak / (double)individual.length());
+	    //LOG.info("MAPPER: EL FITNESS DEL INDIVIDUO ES "+fitness);
+	    
 		return new DoubleWritable(fitness);
 	}
 	
 	
 	@Override
 	protected void setup(Context cont)throws IOException {
-		//LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
+		LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
 		Configuration conf = cont.getConfiguration();
 		FileSystem hdfs = FileSystem.get(conf);
 		String users = conf.get("hadoop.job.ugi");
@@ -117,7 +134,7 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
     	for(peaks=0;peaks<peaks_number;peaks++)
     	{
     		for(i=0;i<gene_length;i++)
-    			if(r.nextDouble()<=0.5)	
+    			if(r.nextDouble()<0.5)	
     				peak[peaks][i] = 1;
     			else	
     				peak[peaks][i] = 0;
@@ -139,7 +156,8 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		while(itr.hasMoreTokens()) {
 			subjectAsWord.set(itr.nextToken());
 			DoubleWritable elemFitness = calculateFitness(subjectAsWord.toString());
-			
+			LOG.info("MAPPER: EL INDIVIDUO ES "+subjectAsWord.toString());
+			LOG.info("MAPPER: EL FITNESS DEL INDIVIDUO ES "+elemFitness);
 			//Seguimos la pista del mejor elemento...
 			if (elemFitness.get() > bestFitness) {
 				bestFitness = elemFitness.get();
