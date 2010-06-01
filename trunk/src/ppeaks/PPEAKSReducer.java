@@ -48,7 +48,7 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	private double bestIndFitness = 0.0;
 	private double mutationRate, crossProb = 0.0;
 	private Vector bufferWinners = new Vector();
-	
+	private int indWinner = 0;
 
 	PPEAKSReducer() {
 		r = new Random(System.nanoTime());
@@ -206,11 +206,14 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 				//por el siguiente participante (5 elementos más) y sobreescribimos...
 				double bestGroupFitness = -99999;
 				for (int i = 0; i < tournIndiv.length; i++) {
-					tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+					//tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+					tournamentArray[indWinner][i] = tournIndiv[i];
 					if (tournamentFitness[i] > bestGroupFitness)
 						bestGroupFitness = tournamentFitness[i];
 				}
-				tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
+//				tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
+				LOG.info("INDWINNER ES "+indWinner);
+				tournamentGroupFitness[indWinner] = bestGroupFitness;
 						
 				selectionAndCrossover(numElemProcessed, tournamentArray, context);
 				numTournaments++;
@@ -225,14 +228,15 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	
 	public void closeAndWrite(Context context) throws IOException, InterruptedException {
 		LOG.info("*****TODOS LOS ELEMENTOS HAN SIDO PROCESADOS******");
-		
 		double bestGroupFitness = -99999;
 		for (int i = 0; i < tournIndiv.length; i++) {
-			tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+			//tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+			tournamentArray[indWinner][i] = tournIndiv[i];
 			if (tournamentFitness[i] > bestGroupFitness)
 				bestGroupFitness = tournamentFitness[i];
 		}
-		tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
+//		tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
+		tournamentGroupFitness[indWinner] = bestGroupFitness;
 		selectionAndCrossover(numElemProcessed, tournamentArray, context);
 	}
 	
@@ -261,8 +265,12 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 					 * es decir, si salio como ganador de un torneo una vez y
 					 * vuelve a salir, no se escribe...
 					 */
-					if (bufferWinners.contains(individuals[j]))
-						continue;
+//					if (bufferWinners.contains(individuals[j]))
+//					{
+//						LOG.info("***********YA ESTA ESCRITO EL INDIVIDUO****");
+//						continue;
+//					}
+						
 					//Escribimos en el fichero y en el buffer de ganadores...
 					//LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR["+j+"]QUE ESCRIBO ES " +individuals[j]);
 					Text indiv = new Text(individuals[j]);
@@ -299,21 +307,26 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		 * luego cruzarlo... 
 		 */
 		String[] tournWinner = null;
+		Vector indWinners = new Vector();
 		double bestFitness = -999999;
 		
 		for (int i=0;i <tournamentSize ;i++) {
-			//LOG.info("TOURNAMENTGROUPFITNESS["+i+"] VALE "+tournamentGroupFitness[i]);
+			LOG.info("TOURNAMENTGROUPFITNESS["+i+"] VALE "+tournamentGroupFitness[i]);
 			if (tournamentGroupFitness[i] > bestFitness)
 			{
 				bestFitness = tournamentGroupFitness[i];
-				//LOG.info("DENTRO DE TOURNSELECTION, LOS FITNESS VALEN "+bestFitness);
+				LOG.info("DENTRO DE TOURNSELECTION, LOS FITNESS VALEN "+bestFitness);
 				tournWinner = tournArray[i];
+				indWinners.addElement(i);
 			}
 		}
 		//LOG.info("EL MEJOR FITNESS DENTRO DEL TOURNSELECTION ES "+bestFitness);
-		for (int aux = 0; aux<tournWinner.length;aux++) {
-			//LOG.info("TOURNWINNER "+aux+" VALE "+tournWinner[aux]);
-		}
+//		for (int aux = 0; aux<tournWinner.length;aux++) {
+//			//LOG.info("TOURNWINNER "+aux+" VALE "+tournWinner[aux]);
+//		}
+		//Sacamos el indice del elemento ganador para escribir el siguiente
+		//elemento en él...
+		indWinner = Integer.parseInt(indWinners.elementAt((indWinners.size()-1)).toString());
 		
 		return tournWinner;
 	}

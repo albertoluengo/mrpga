@@ -238,9 +238,9 @@ public class Cliente {
 //		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
 		
 		//PARAMETROS PROBLEMA PPEAKS
-		int population= 515;
-	    int gene_number = 64;
-		int maxiter = 1;
+		int population= 512;
+	    int gene_number = 32;
+		int maxiter = 2;
 		int boolElit = 1;
 		int mutation = 1;
 		float mutationrate= 1.0f/(float)gene_number;

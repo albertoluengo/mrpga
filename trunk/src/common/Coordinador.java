@@ -163,7 +163,7 @@ public class Coordinador implements ICoordinador {
 			
 			/**Miramos si en la poblacion resultante tenemos el resultado objetivo... 
 			 */
-			System.out.println("COORDINADOR["+i+"]: BUSCO EL INDIVIDUO OBJETIVO...");			
+			System.out.println("COORDINADOR["+i+"]: BUSCO EL FITNESS OBJETIVO...");			
 			hTable = this.generateIndividualsTable(subOptimalResultsFilePath,numProblem);
 			
 			/**
@@ -174,7 +174,7 @@ public class Coordinador implements ICoordinador {
 				if (hTable.containsValue(0)) 
 					break;
 				else 
-					System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+					System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL FITNESS OBJETIVO");
 			
 			/**
 			 * Si el problema es 'OneMax', su fitness ideal 
