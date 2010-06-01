@@ -26,7 +26,7 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	private int crossSize = 2;
 	private int tournamentSize = 5;
 	private int numElemProcessed, numPop, boolElit, mutation, cont, numTournaments = 0;
-	private static final Log LOG = LogFactory.getLog(TargetPhraseReducer.class.getName());
+	private static final Log LOG = LogFactory.getLog(OneMAXReducer.class.getName());
 	
 	private String[][]tournamentArray;
 	private String[]tournIndiv;

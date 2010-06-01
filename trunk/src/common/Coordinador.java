@@ -164,7 +164,7 @@ public class Coordinador implements ICoordinador {
 			/**Miramos si en la poblacion resultante tenemos el resultado objetivo... 
 			 */
 			System.out.println("COORDINADOR["+i+"]: BUSCO EL INDIVIDUO OBJETIVO...");			
-			hTable = this.generateIndividualsTable(subOptimalResultsFilePath);
+			hTable = this.generateIndividualsTable(subOptimalResultsFilePath,numProblem);
 			
 			/**
 			 * Si el problema es el de 'frase objetivo',
@@ -343,16 +343,26 @@ public class Coordinador implements ICoordinador {
 	public String printBestIndividual(Hashtable hashTable, String numProblem) {
 		Hashtable bestTable = new Hashtable();
 		Enumeration claves = hashTable.keys();
-		int fitValue = 0;
+		int fitValue = 0, bestFitness = 0;
+		float fitValFloat = 0, bestFitFloat = 0;
 		//Inicializamos el fitness al del primer individuo...
-		int bestFitness = Integer.parseInt(hashTable.elements().nextElement().toString());
+		if (numProblem !="3")
+			bestFitness = Integer.parseInt(hashTable.elements().nextElement().toString());
+		else
+			bestFitFloat = Float.parseFloat(hashTable.elements().nextElement().toString());
 		while (claves.hasMoreElements())
 		{
 			String clave = (String)claves.nextElement();
-			fitValue = Integer.parseInt(hashTable.get(clave).toString());
 			//System.out.println("LA CLAVE ES "+clave);
-			//System.out.println("EL FITVALUE ES "+fitValue);
+			if (numProblem !="3")
+			{
+				fitValue = Integer.parseInt(hashTable.get(clave).toString());
+				//System.out.println("EL FITVALUE ES "+fitValue);
+			}
+			else
+				fitValFloat = Float.parseFloat(hashTable.get(clave).toString());
 			
+				
 			/**
 			 * Si es el problema 'frase objetivo' 
 			 * el mejor fitness sera el más pequeño...
@@ -374,16 +384,28 @@ public class Coordinador implements ICoordinador {
 			 * el mejor fitness sera el más alto...
 			 */
 			else 
-			{
-				if (fitValue > bestFitness)
+				if (numProblem == "3")
 				{
-					bestTable.clear();
-					bestTable.put(clave, fitValue);
-					bestFitness = fitValue;					
+					if (fitValFloat > bestFitFloat)
+					{
+						bestTable.clear();
+						bestTable.put(clave, fitValFloat);
+						bestFitFloat = fitValFloat;					
+					}
+					else if (fitValFloat == bestFitFloat)
+						bestTable.put(clave, fitValFloat);
 				}
-				else if (fitValue == bestFitness)
-					bestTable.put(clave, fitValue);
-			}
+				else
+				{
+					if (fitValue > bestFitness)
+					{
+						bestTable.clear();
+						bestTable.put(clave, fitValue);
+						bestFitness = fitValue;					
+					}
+					else if (fitValue == bestFitness)
+						bestTable.put(clave, fitValue);
+				}
 		}
 		String result = "Best individual(s) found is (are): "+bestTable;
 		return result;
@@ -422,7 +444,7 @@ public class Coordinador implements ICoordinador {
 	}
 
 	@Override
-	public Hashtable<String, Integer> generateIndividualsTable(Path resultsPath) throws IOException {
+	public Hashtable generateIndividualsTable(Path resultsPath, String numProblem) throws IOException {
 		Hashtable hTable = new Hashtable();
 		FileSystem hdfs = FileSystem.get(new Configuration());
 		Scanner s = null;
@@ -456,9 +478,14 @@ public class Coordinador implements ICoordinador {
 				 */
 				String keyWord = sl.next();
 				String fitness = sl.next();
+				/**
+				 * En el caso del problema de los P-Picos, manejamos siempre
+				 * valores double...
+				 */
 				double valor = Double.parseDouble(fitness);
-				int valInt = (int)valor;
-				hTable.put(keyWord, valInt);
+				if (numProblem != "3")
+					valor = (int)valor;
+				hTable.put(keyWord, valor);
 			}
 	    }
 	    catch(Exception e){

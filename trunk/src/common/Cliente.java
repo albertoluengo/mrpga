@@ -239,8 +239,8 @@ public class Cliente {
 		
 		//PARAMETROS PROBLEMA PPEAKS
 		int population= 515;
-	    int gene_number = 128;
-		int maxiter = 2;
+	    int gene_number = 64;
+		int maxiter = 1;
 		int boolElit = 1;
 		int mutation = 1;
 		float mutationrate= 1.0f/(float)gene_number;

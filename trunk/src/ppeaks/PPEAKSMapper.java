@@ -18,6 +18,11 @@ import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Mapper.Context;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import targetphrase.TargetPhraseMapper;
+
 
 /**
  * 
@@ -34,6 +39,7 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	private String USERNAME;
 	private Hashtable mapParameters = new Hashtable();
 	private Random r;
+	private static final Log LOG = LogFactory.getLog(PPEAKSMapper.class.getName());
 	
 	// Numero de picos
 	private static int peaks_number = 500;
@@ -41,8 +47,6 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	private static short peak[][];
 	// Longitud de los cromosomas...
 	private int gene_length;
-	//Contadores
-    private int i, peaks, aux;
     
     PPEAKSMapper() {
 		r = new Random(System.nanoTime());
@@ -53,11 +57,13 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		double fitness = 0.0;
 	    //Bits en comun con el pico mas cercano
 	    int nearest_peak = 0;
+	    int aux = 0, i = 0, peaks = 0;
 		//Para cada pico...
 	    for(peaks=0; peaks<peaks_number; peaks++)
 	    {
 	      //...calculamos la distancia Hamming...
-	      for(aux=0,i=0;i<individual.length();i++) 
+	      for(aux=0,i=0;i<(individual.length()-1);i++) 
+	    	  //LOG.info("EL PICO VALE " +peak[peaks][i]);
 	    	  if(peak[peaks][i]!=Integer.parseInt(individual.charAt(i)+""));	
 	    		  aux++;
 
@@ -66,6 +72,7 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	    }
 
 	    fitness = (double)nearest_peak / (double)gene_length;
+	    LOG.info("MAPPER: EL FITNESS DEL INDIVIDUO ES"+fitness);
 		return new DoubleWritable(fitness);
 	}
 	
@@ -106,14 +113,16 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		 
 		//Creo los picos una unica vez...
     	peak = new short[peaks_number][gene_length];
+    	int peaks = 0, i = 0;
     	for(peaks=0;peaks<peaks_number;peaks++)
     	{
     		for(i=0;i<gene_length;i++)
-    			if(r.nextDouble()<0.5)	
+    			if(r.nextDouble()<=0.5)	
     				peak[peaks][i] = 1;
     			else	
     				peak[peaks][i] = 0;
-    	} 
+    	}
+    	LOG.info("CREO LOS PICOS");
 	}
 	
 	@Override

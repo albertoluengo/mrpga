@@ -29,7 +29,7 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	private int crossSize = 2;
 	private int tournamentSize = 5;
 	private int numElemProcessed, numPop, boolElit, mutation, cont, numTournaments = 0;
-	private static final Log LOG = LogFactory.getLog(TargetPhraseReducer.class.getName());
+	private static final Log LOG = LogFactory.getLog(PPEAKSReducer.class.getName());
 	
 	private String[][]tournamentArray;
 	private String[]tournIndiv;
@@ -48,6 +48,7 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	private double bestIndFitness = 0.0;
 	private double mutationRate, crossProb = 0.0;
 	private Vector bufferWinners = new Vector();
+	
 
 	PPEAKSReducer() {
 		r = new Random(System.nanoTime());
@@ -137,7 +138,7 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		while (valuesIter.hasNext()) 
 		{
 			fitness = valuesIter.next();
-			//LOG.info("EL INDIVIDUO "+numElemProcessed+" TIENE CLAVE "+key.toString());
+			LOG.info("EL INDIVIDUO "+numElemProcessed+" TIENE CLAVE "+key.toString()+"Y FITNESS "+fitness);
 			
 //			tournIndiv[numElemProcessed%tournamentSize + tournamentSize] = key.toString();
 //			tournamentFitness[numElemProcessed%tournamentSize + tournamentSize] = fitness.get();
@@ -151,7 +152,7 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 			{
 				//Calculamos el mejor fitness de los elementos del grupo...
 				LOG.info("*****CALCULAMOS LOS VALORES GRUPALES******");
-				double bestGroupFitness =  -99999;
+				double bestGroupFitness = -99999;
 				for (int i=0; i < tournamentFitness.length;i++)
 				{
 					if (tournamentFitness[i] > bestGroupFitness)
@@ -263,7 +264,7 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 					if (bufferWinners.contains(individuals[j]))
 						continue;
 					//Escribimos en el fichero y en el buffer de ganadores...
-					LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR["+j+"]QUE ESCRIBO ES " +individuals[j]);
+					//LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR["+j+"]QUE ESCRIBO ES " +individuals[j]);
 					Text indiv = new Text(individuals[j]);
 					/**Para no caer en mesetas o maximos locales, vamos a mutar a los
 					 * individuos antes de cruzarlos...

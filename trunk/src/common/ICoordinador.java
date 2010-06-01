@@ -29,6 +29,6 @@ public interface ICoordinador {
 	public void replacePopulationFile(Path original, Path actual) throws IOException;
 	public void runPigScript(String filePath, int iterations, Configuration conf)throws ExecException, IOException;
 	public String printBestIndividual(Hashtable hashTable, String numProblem);
-	public Hashtable<String, Integer> generateIndividualsTable(Path filePath)throws IOException;
+	public Hashtable generateIndividualsTable(Path filePath, String numProblem)throws IOException;
 	public String readFromHDFS(String stringPath);
 }
