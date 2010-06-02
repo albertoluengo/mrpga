@@ -73,7 +73,7 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 		FSDataInputStream dis = hdfs.open(path);
 		BufferedReader br = new BufferedReader(new InputStreamReader(dis));
 		String strLine;
-		String[]keys = {"targetPhrase","numPopulation","debugging","elitism"};
+		String[]keys = {"targetPhrase","numPopulation","debugging","elitism","gene_length"};
 		int index=0;
 		 while ((strLine = br.readLine()) != null)   {
 			mapParameters.put(keys[index], strLine);

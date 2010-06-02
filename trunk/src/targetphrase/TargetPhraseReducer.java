@@ -66,6 +66,7 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	private double mutationRate, crossProb = 0.0;
 	private String targetPhrase ="";
 	private Vector bufferWinners = new Vector();
+	private int indWinner = 0;
 
 	TargetPhraseReducer() {
 		r = new Random(System.nanoTime());
@@ -225,11 +226,11 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 				//por el siguiente participante (5 elementos más) y sobreescribimos...
 				int bestGroupFitness = 99999;
 				for (int i = 0; i < tournIndiv.length; i++) {
-					tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+					tournamentArray[indWinner][i] = tournIndiv[i];
 					if (tournamentFitness[i] < bestGroupFitness)
 						bestGroupFitness = tournamentFitness[i];
 				}
-				tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
+				tournamentGroupFitness[indWinner] = bestGroupFitness;
 						
 				selectionAndCrossover(numElemProcessed, tournamentArray, context);
 				numTournaments++;
@@ -247,11 +248,11 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		
 		int bestGroupFitness = 99999;
 		for (int i = 0; i < tournIndiv.length; i++) {
-			tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+			tournamentArray[indWinner][i] = tournIndiv[i];
 			if (tournamentFitness[i] < bestGroupFitness)
 				bestGroupFitness = tournamentFitness[i];
 		}
-		tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
+		tournamentGroupFitness[indWinner] = bestGroupFitness;
 		selectionAndCrossover(numElemProcessed, tournamentArray, context);
 	}
 	
@@ -319,6 +320,7 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		 */
 		String[] tournWinner = null;
 		long bestFitness = 999999;
+		Vector indWinners = new Vector();
 		
 		for (int i=0;i <tournamentSize ;i++) {
 			//LOG.info("TOURNAMENTGROUPFITNESS["+i+"] VALE "+tournamentGroupFitness[i]);
@@ -327,12 +329,16 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 				bestFitness = tournamentGroupFitness[i];
 				//LOG.info("DENTRO DE TOURNSELECTION, LOS FITNESS VALEN "+bestFitness);
 				tournWinner = tournArray[i];
+				indWinners.addElement(i);
 			}
 		}
 		//LOG.info("EL MEJOR FITNESS DENTRO DEL TOURNSELECTION ES "+bestFitness);
 		for (int aux = 0; aux<tournWinner.length;aux++) {
 			//LOG.info("TOURNWINNER "+aux+" VALE "+tournWinner[aux]);
 		}
+		//Sacamos el indice del elemento ganador para escribir el siguiente
+		//elemento en él...
+		indWinner = Integer.parseInt(indWinners.elementAt((indWinners.size()-1)).toString());
 		
 		return tournWinner;
 	}

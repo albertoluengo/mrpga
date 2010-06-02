@@ -207,8 +207,8 @@ public class Cliente {
 		
 		
 		//PARAMETROS PROBLEMA TARGET_PHRASE
-//		int population= 2050;
-//		int maxiter = 3;
+//		int population= 512;
+//		int maxiter = 1;
 //		int boolElit = 1;
 //		int gene_number = 0;
 //		String target="Hello_world!";
@@ -224,9 +224,9 @@ public class Cliente {
 		
 		
 		//PARAMETROS PROBLEMA ONEMAX
-//		int population= 515;
-//	    int gene_number = 128;
-//		int maxiter = 2;
+//		int population= 512;
+//	    int gene_number = 64;
+//		int maxiter = 1;
 //		int boolElit = 1;
 //		int mutation = 1;
 //		float mutationrate= 1.0f/(float)gene_number;
@@ -240,7 +240,7 @@ public class Cliente {
 		//PARAMETROS PROBLEMA PPEAKS
 		int population= 512;
 	    int gene_number = 32;
-		int maxiter = 2;
+		int maxiter = 1;
 		int boolElit = 1;
 		int mutation = 1;
 		float mutationrate= 1.0f/(float)gene_number;

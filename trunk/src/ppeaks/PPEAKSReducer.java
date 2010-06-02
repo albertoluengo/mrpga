@@ -212,7 +212,7 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 						bestGroupFitness = tournamentFitness[i];
 				}
 //				tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
-				LOG.info("INDWINNER ES "+indWinner);
+//				LOG.info("INDWINNER ES "+indWinner);
 				tournamentGroupFitness[indWinner] = bestGroupFitness;
 						
 				selectionAndCrossover(numElemProcessed, tournamentArray, context);
