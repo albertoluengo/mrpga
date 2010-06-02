@@ -45,6 +45,7 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	private double bestIndFitness = 0.0;
 	private double mutationRate, crossProb = 0.0;
 	private Vector bufferWinners = new Vector();
+	private int indWinner = 0;
 
 	OneMAXReducer() {
 		r = new Random(System.nanoTime());
@@ -202,11 +203,11 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 				//por el siguiente participante (5 elementos más) y sobreescribimos...
 				double bestGroupFitness = -99999;
 				for (int i = 0; i < tournIndiv.length; i++) {
-					tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+					tournamentArray[indWinner][i] = tournIndiv[i];
 					if (tournamentFitness[i] > bestGroupFitness)
 						bestGroupFitness = tournamentFitness[i];
 				}
-				tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
+				tournamentGroupFitness[indWinner] = bestGroupFitness;
 						
 				selectionAndCrossover(numElemProcessed, tournamentArray, context);
 				numTournaments++;
@@ -224,11 +225,11 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		
 		double bestGroupFitness = -99999;
 		for (int i = 0; i < tournIndiv.length; i++) {
-			tournamentArray[numTournaments%(tournamentSize -1)][i] = tournIndiv[i];
+			tournamentArray[indWinner][i] = tournIndiv[i];
 			if (tournamentFitness[i] > bestGroupFitness)
 				bestGroupFitness = tournamentFitness[i];
 		}
-		tournamentGroupFitness[numTournaments%(tournamentSize -1)] = bestGroupFitness;
+		tournamentGroupFitness[indWinner] = bestGroupFitness;
 		selectionAndCrossover(numElemProcessed, tournamentArray, context);
 	}
 	
@@ -296,6 +297,7 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		 */
 		String[] tournWinner = null;
 		double bestFitness = -999999;
+		Vector indWinners = new Vector();
 		
 		for (int i=0;i <tournamentSize ;i++) {
 			//LOG.info("TOURNAMENTGROUPFITNESS["+i+"] VALE "+tournamentGroupFitness[i]);
@@ -304,12 +306,16 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 				bestFitness = tournamentGroupFitness[i];
 				//LOG.info("DENTRO DE TOURNSELECTION, LOS FITNESS VALEN "+bestFitness);
 				tournWinner = tournArray[i];
+				indWinners.addElement(i);
 			}
 		}
 		//LOG.info("EL MEJOR FITNESS DENTRO DEL TOURNSELECTION ES "+bestFitness);
 		for (int aux = 0; aux<tournWinner.length;aux++) {
 			//LOG.info("TOURNWINNER "+aux+" VALE "+tournWinner[aux]);
 		}
+		//Sacamos el indice del elemento ganador para escribir el siguiente
+		//elemento en él...
+		indWinner = Integer.parseInt(indWinners.elementAt((indWinners.size()-1)).toString());
 		
 		return tournWinner;
 	}

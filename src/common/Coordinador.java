@@ -165,7 +165,6 @@ public class Coordinador implements ICoordinador {
 			 */
 			System.out.println("COORDINADOR["+i+"]: BUSCO EL FITNESS OBJETIVO...");			
 			hTable = this.generateIndividualsTable(subOptimalResultsFilePath,numProblem);
-			
 			/**
 			 * Si el problema es el de 'frase objetivo',
 			 * su fitness ideal sera 0
@@ -174,7 +173,7 @@ public class Coordinador implements ICoordinador {
 				if (hTable.containsValue(0)) 
 					break;
 				else 
-					System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL FITNESS OBJETIVO");
+					System.out.println("COORDINADOR["+i+"][TARGETPHRASE]: EN LA ITERACION "+i+" NO ENCUENTRO EL FITNESS OBJETIVO");
 			
 			/**
 			 * Si el problema es 'OneMax', su fitness ideal 
@@ -184,7 +183,7 @@ public class Coordinador implements ICoordinador {
 				if (hTable.containsValue(gene_number)) 
 					break;
 				else 
-					System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+					System.out.println("COORDINADOR["+i+"][ONEMAX]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
 			
 			/**
 			 * Si el problema es 'PPeaks', 
@@ -194,7 +193,7 @@ public class Coordinador implements ICoordinador {
 				if (hTable.containsValue(1)) 
 					break;
 				else 
-					System.out.println("COORDINADOR["+i+"]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+					System.out.println("COORDINADOR["+i+"][PPEAKS]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
 			
 			System.out.println("COORDINADOR["+i+"]: Llamo al script de Pig");		
 			this.runPigScript(subOptimalResultsFilePath.toString(),i,conf);
@@ -246,7 +245,7 @@ public class Coordinador implements ICoordinador {
 	public void runPigScript(String inputFile, int iteration, Configuration conf) throws ExecException, IOException {
 		
 		//Tenemos que leer un fichero del HDFS
-		System.out.println("COORDINADOR["+iteration+"]: Dentro del script de Pig");
+		//System.out.println("COORDINADOR["+iteration+"]: Dentro del script de Pig");
 		FileSystem fs = FileSystem.get(conf);
 		Path resultPath = new Path("pigResults");
 	    
@@ -343,20 +342,23 @@ public class Coordinador implements ICoordinador {
 	public String printBestIndividual(Hashtable hashTable, String numProblem) {
 		Hashtable bestTable = new Hashtable();
 		Enumeration claves = hashTable.keys();
+		//System.out.println("CLAVES VALE "+claves);
 		int fitValue = 0, bestFitness = 0;
 		float fitValFloat = 0, bestFitFloat = 0;
+		
 		//Inicializamos el fitness al del primer individuo...
-		if (numProblem !="3")
-			bestFitness = Integer.parseInt(hashTable.elements().nextElement().toString());
+		if ((Integer.parseInt(numProblem) == 1)||(Integer.parseInt(numProblem) == 2))
+			bestFitness = (int)Double.parseDouble(hashTable.elements().nextElement().toString());
 		else
 			bestFitFloat = Float.parseFloat(hashTable.elements().nextElement().toString());
+		
 		while (claves.hasMoreElements())
 		{
 			String clave = (String)claves.nextElement();
 			//System.out.println("LA CLAVE ES "+clave);
-			if (numProblem !="3")
+			if ((Integer.parseInt(numProblem)== 1)||(Integer.parseInt(numProblem)== 2))
 			{
-				fitValue = Integer.parseInt(hashTable.get(clave).toString());
+				fitValue = (int)Double.parseDouble(hashTable.get(clave).toString());
 				//System.out.println("EL FITVALUE ES "+fitValue);
 			}
 			else
@@ -367,7 +369,7 @@ public class Coordinador implements ICoordinador {
 			 * Si es el problema 'frase objetivo' 
 			 * el mejor fitness sera el más pequeño...
 			 */
-			if (numProblem == "1")
+			if (Integer.parseInt(numProblem) == 1)
 			{
 				if (fitValue < bestFitness)
 				{
@@ -384,7 +386,7 @@ public class Coordinador implements ICoordinador {
 			 * el mejor fitness sera el más alto...
 			 */
 			else 
-				if (numProblem == "3")
+				if (Integer.parseInt(numProblem) == 3)
 				{
 					if (fitValFloat > bestFitFloat)
 					{
