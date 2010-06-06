@@ -23,7 +23,12 @@ import org.apache.hadoop.mapreduce.Reducer.Context;
 
 import targetphrase.TargetPhraseReducer;
 
-
+/**
+ * Clase que representa un nodo <code>Reducer</code> dentro del framework 
+ * de ejecución <code>MapReduce</code>, implementando todas las funciones
+ * necesarias para ello (<code>reduce()</code>, <code>setup()</code>, etc).
+ * @author Alberto Luengo Cabanillas
+ */
 public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritable> {
 	private DoubleWritable fitness = new DoubleWritable();
 	private int crossSize = 2;
@@ -50,6 +55,10 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	private Vector bufferWinners = new Vector();
 	private int indWinner = 0;
 
+	/**
+	 * Método constructor de la clase <code>PPEAKSReducer</code>
+	 * que inicializa una nueva semilla para la generación de números aleatorios.
+	 */
 	PPEAKSReducer() {
 		r = new Random(System.nanoTime());
 	}
@@ -222,6 +231,17 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		}	
 	}
 	
+	/**
+	 * Método que ejecuta el último torneo de individuos cuando todos los usuarios
+	 * han sido procesados. Esto se debe a la ventana activa de <code>tournamentSize</code>
+	 * elementos con los que se trabaja
+	 * @param context Instancia de la clase <code>Context</code> que facilita información acerca
+	 * del trabajo <code>MapReduce</code> que se está ejecutando. 
+	 * @throws IOException Excepción lanzada al haber algún problema manipulando
+	 * ficheros o directorios.
+	 * @throws InterruptedException Excepción propia del API de Hadoop que se lanza si hay algún
+	 * problema escribiendo los individuos procesados.
+	 */
 	public void closeAndWrite(Context context) throws IOException, InterruptedException {
 		LOG.info("*****TODOS LOS ELEMENTOS HAN SIDO PROCESADOS******");
 		//Acabamos con la ultima ventana del torneo...
@@ -240,6 +260,16 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		}
 	}
 	
+	/**
+	 * Método que se encarga de escribir los distintos resultados sub-óptimos en
+	 * el fichero de salida correspondiente, tras haber realizado una selección
+	 * de los mejores individuos por medio de un torneo, cruzarlos y, si se ha
+	 * indicado, mutarlos.
+	 * @param numElemProcessed Número de individuos procesados de una población.
+	 * @param tournArray Conjunto de individuos que participarán en el torneo.
+	 * @param context Instancia de la clase <code>Context</code> que facilita información acerca
+	 * del trabajo <code>MapReduce</code> que se está ejecutando.
+	 */
 	private void selectionAndCrossover(int numElemProcessed, String[][]tournArray,Context context){
 		String[] tournWinner = this.tournSelection(tournArray);
 		String[][] newIndividuals = null;
@@ -265,11 +295,8 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 					 * es decir, si salio como ganador de un torneo una vez y
 					 * vuelve a salir, no se escribe...
 					 */
-//					if (bufferWinners.contains(individuals[j]))
-//					{
-//						LOG.info("***********YA ESTA ESCRITO EL INDIVIDUO****");
-//						continue;
-//					}
+					if (bufferWinners.contains(individuals[j]))
+						continue;
 						
 					//Escribimos en el fichero y en el buffer de ganadores...
 					//LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL VALOR["+j+"]QUE ESCRIBO ES " +individuals[j]);
@@ -301,7 +328,13 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		}	
 	}
 	
-	/**Implementamos el metodo de seleccion por torneo sin reemplazamiento*/
+	/**
+	 * Método que implementa el metodo de seleccion por torneo sin reemplazamiento
+	 * entre los distintos individuos de una población, devolviendo los ganadores
+	 * del mismo.
+	 * @param tournArray Conjunto de individuos (contendientes) sobre los que realizar el torneo.
+	 * @return Conjunto de individuos ganadores del torneo.
+	 */
 	private String[] tournSelection(String[][]tournArray) {
 		/**Dentro del array de arrays de contendientes, elegimos al que tenga mejor fitness para
 		 * luego cruzarlo... 
@@ -333,7 +366,10 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 
 	
 	
-	//Operacion de cruce sobre dos grupos de individuos...
+	/**
+	 * Método que realiza la operación de cruce sobre dos grupos de individuos.
+	 * @return Los grupos de individuos cruzados aleatoriamente.
+	 */
 	private String[][] crossOver() {
 		LOG.info("*********EN EL CROSSOVER**********");
 		String[][] newIndividuals = new String[crossArray.length][tournamentSize];
@@ -380,7 +416,12 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	}
 	
 	
-	/**Mutamos al individuo concreto**/
+	/**
+	 * Método que implementa la operación de mutación sobre un individuo concreto,
+	 * en función de una probabilidad.
+	 * @param Individuo a mutar.
+	 * @return Individuo mutado.
+	 */
 	private Text mutate(Text individual)
 	{
 		double random = r.nextDouble();

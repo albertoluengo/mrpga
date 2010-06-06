@@ -3,6 +3,7 @@
 		<delete file="mrpga.jar"/>
 		<delete dir="build/" />
 		<delete dir="bin/" />
+		<delete dir="docs/" />
 	</target>
 
 	<property name="lib.hadoop.dir" value="G:/hadoop-0.20.1/" />
@@ -19,7 +20,20 @@
 	</target>
 	
 	<target name="javadoc">
-	      <javadoc sourcepath="." destfile="../javadoc" packagenames="*"/>
+	      <javadoc sourcepath="src" 
+	      	       packagenames="*"
+	      		   destdir="docs/api"
+	      	       author="true"
+	      	       version="true"
+	      	       use="true"
+	      	       encoding="utf-8"
+	      	       classpathref="classpath"
+	      	       windowtitle="MRPGA API">
+	      	    <doctitle><![CDATA[<h1>Welcome to MRPGA API</h1>]]></doctitle>
+	      	    <bottom><![CDATA[<i>Copyright &#169; 2010 Universidade de A Coru&#241;a. All Rights Reserved.</i>]]></bottom>
+	      	    <link offline="true" href="http://java.sun.com/javase/6/docs/api/" packagelistLoc="C:/tmp"/>
+	      	    <link href="http://java.sun.com/javase/6/docs/api/"/>
+           </javadoc>
     </target>
 
 	<target name="jar" description="Make MRPGA jar.">

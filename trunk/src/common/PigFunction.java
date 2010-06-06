@@ -7,17 +7,25 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.pig.PigServer;
 
+/**
+ * Clase que ejecuta código <code>Pig Latin<code> embebido en Java, 
+ * que se encarga de recopilar los distintos individuos sub-óptimos que 
+ * generan los "reduce" locales (que estaran almacenados
+ * en un formato de documento de texto) y aplica sobre ellos las operaciones 
+ * que se necesiten. Además, generará un nuevo fichero de población para que
+ * comience una nueva iteración en el sistema.
+ * @author Alberto Luengo Cabanillas
+ *
+ */
 public class PigFunction {
 
 	/**
-	 * Este metodo ejecuta codigo Pig Latin embebido en Java, de tal forma que recopile los
-	 * distintos individuos sub-optimos que generen los "reduce" locales (que estaran almacenados
-	 * en un formato de documento de texto) y aplique sobre ellos las operaciones que necesitemos
-	 * (merge, order, filter y select -en principio...). Ademas le tendra que enviar el fichero
-	 * resultante con la poblacion optima de la iteracion al Coordinador, para que este se la 
-	 * pase al master y comience una nueva iteracion
-	 * @author Alberto Luengo Cabanillas
-	 *
+	 * Método principal de la clase <code>PigFunction</code> que se encarga
+	 * de procesar los ficheros de población resultantes de los nodos 
+	 * <code>Reducer</code>.
+	 * @param args Array de comandos.
+	 * @throws IOException Excepción lanzada al haber algún problema manipulando
+	 * ficheros o directorios.
 	 */
 	public static void main(String[] args) throws IOException {
 		Configuration conf = new Configuration();
@@ -34,7 +42,7 @@ public class PigFunction {
 	    	}
 	    }
 	    catch (IOException ioe) {
-	    	System.err.println("COORDINADOR["+iteration+"]:Se ha producido un error borrando el dir de salida de Pig");
+	    	System.err.println("PIGFUNCTION["+iteration+"]:Se ha producido un error borrando el dir de salida de Pig");
 	    	System.exit(1);
 	    }
 		

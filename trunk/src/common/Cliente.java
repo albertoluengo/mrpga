@@ -13,20 +13,21 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-/**
- * Las funciones del cliente seran basicamente de introducir datos al sistema e inicializar
- * la poblacion a partir de esos datos:
- * 1.- Definir el tamanho de la poblacion
- * 2.- Definir el total de iteraciones
- * 3.- Definir el grado de elitismo en la descendencia
- * 4.- Definir el grado de mutacion
- * 5.- Definir cual es la frase objetivo
- * 
- */
 
+/**
+ * Punto de entrada del sistema, a trav&#233;s del cual se introducir&#225;n los distintos
+ * par&#225;metros configurables del mismo, tales como n&#250;mero de iteraciones, tama&#209;o
+ * de poblaci&#243;n, etc.
+ * @author Alberto Luengo Cabanillas
+ */
 public class Cliente extends Configured implements Tool {
 
-	
+	/**
+	 * M&#233;todo privado que genera un String compuesto de caracteres alfanum&#233;ricos, elegidos de forma aleatoria, y de longitud la del String
+	 * que se le pasa por par&#225;metro.
+	 * @param target Cadena que se utilizar&#225; para calcular la longitud del String a generar.
+	 * @return Cadena de texto alfanum&#233;rica compuesta por caracteres generados aleatoriamente.
+	 */
 	private static String generateRandomString(String target) {
 			String individuo = "";
 			int sizeTarget=target.length();
@@ -46,7 +47,15 @@ public class Cliente extends Configured implements Tool {
 				}
 			return individuo;
 			}
-		
+	
+	/**
+	 * M&#233;todo privado que genera un String compuesto de caracteres binarios
+	 * elegidos de forma aleatoria, y de longitud la cantidad que se le pasa 
+	 * por par&#225;metro.
+	 * @param geneNumber N&#250;mero entero que indica la longitud de la cadena que
+	 * se va a generar
+	 * @return Cadena de texto alfanum&#233;rica compuesta por caracteres generados aleatoriamente.
+	 */
 	private static String generateRandomBinaryString(int geneNumber) {
 		String cadenaAleatoria ="";
 		int cont=0;
@@ -63,7 +72,13 @@ public class Cliente extends Configured implements Tool {
 		return cadenaAleatoria;
 		}
 	
-	
+	/**
+	 * M&#233;todo privado que genera el fichero con la poblaci&#243;n inicial de individuos a procesar por el sistema.
+	 * @param target Frase objetivo a conseguir (aplicable para el problema "TargetPhrase")
+	 * @param sizePop N&#250;mero entero que indica el tama&#209;o de las poblaciones a procesar
+	 * @param geneNumber Longitud (entera) de los individuos que componen las poblaciones a procesar.
+	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS")
+	 */
 	private static void generatePopulationFile(String target, int sizePop, int geneNumber, int numProblem) {
 		
 		//Instanciamos el fichero...
@@ -110,8 +125,11 @@ public class Cliente extends Configured implements Tool {
 		} catch (IOException e){e.printStackTrace();}
 	}
 	
-	//Creamos el fichero de configuracion que debe subir el coordinador al HDFS para que el
-	//Master lo distribuya entre los nodos trabajadores...
+	//
+	/**
+	 *M&#233;todo que crea el fichero de configuracion que debe subir el coordinador al 
+	 *HDFS para que el nodo <code>MRPGAMaster</code> lo distribuya entre los nodos trabajadores... 
+	 */
 	private static void generateMapperConfigurationFile(String target, int numPop, int boolElit, int debug,int gene_length) {
 		
 		//Instanciamos el fichero...
@@ -151,8 +169,10 @@ public class Cliente extends Configured implements Tool {
 		} catch (IOException e){e.printStackTrace();}	
 	}
 	
-	//Creamos el fichero de configuracion que debe subir el coordinador al HDFS para que el
-	//Master lo distribuya entre los nodos trabajadores...
+	/**
+	 *Creamos el fichero de configuracion que debe subir el coordinador al HDFS 
+	 *para que el Master lo distribuya entre los nodos trabajadores... 
+	 */
 	private static void generateReducerConfigurationFile(int numpop, int maxiter, int boolElit,
 			float mutationrate, int mutation, double crossProb, String target) {
 		//Instanciamos el fichero...
@@ -193,7 +213,20 @@ public class Cliente extends Configured implements Tool {
 		} catch (IOException e){e.printStackTrace();}	
 	}
 	
-	
+	/**
+	 * M&#233;todo que inicia el sistema <code>MRPGA</code>, cogiendo la configuraci&#243;n necesaria del HDFS subyacente
+	 * (par&#225;metros, sistemas de ficheros,etc)
+	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
+	 * @param maxIter N&#250;mero m&#225;ximo de iteraciones por las que va a atravesar el sistema.
+	 * @param population Tama&#209;o (entero) de la poblaci&#243;n a procesar.
+	 * @param geneNumber Longitud de los individuos de las poblaciones a procesar (no aplicable al problema <code>TargetPhrase</code>).
+	 * @param crossProb Probabilidad de cruce entre dos individuos de una misma poblacion.
+	 * @param boolElit N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si se introduce elitismo o no en la generaci&#243;n de descendencia.
+	 * @param mutation N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si se introduce mutaci&#243;n o no en la generaci&#243;n de descendencia.
+	 * @param debug N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si interesa guardar un hist&#243;rico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
+	 * @param endCriterial N&#250;mero entero (0-->"Por Iteraciones", 1-->"Por Objetivo") que indica la forma de terminaci&#243;n del algoritmo.
+	 * @param targetPhrase Cadena de texto que representa la frase objetivo a conseguir (s&#243;lo aplicable al problema <code>TargetPhrase</code>).
+	 */
 	void launch(String numProblem, int maxIter, int population, int geneNumber, double crossProb, int boolElit, int mutation, int debug, int endCriterial, String targetPhrase) {
 		
 		Configuration conf = new Configuration();
@@ -210,7 +243,7 @@ public class Cliente extends Configured implements Tool {
 		String result ="";
 	
 		//Como se van a generar individuos con un numero de genes igual a la longitud
-		//de la palabra objetivo, su posibilidad de mutación será su inversa...
+		//de la palabra objetivo, su posibilidad de mutaci&#243;n ser&#225; su inversa...
 		float mutationrate= 1.0f/(float)targetPhrase.length();
 		Coordinador coord = new Coordinador(userName);
 		
@@ -233,9 +266,11 @@ public class Cliente extends Configured implements Tool {
 		} catch (IOException e) {
 			System.err.println("CLIENTE: Se ha producido un error de I/O en la conexion al HDFS");
 		}catch (Exception e) {
-		// TODO Auto-generated catch block
-		System.err.println("CLIENTE: Se ha producido un error generico ejecutando el codigo del Master");
+			System.err.println("CLIENTE: Se ha producido un error generico ejecutando el codigo del Master");
 		}
+		/**
+		 * PASO 3.- El cliente imprime el resultado del procesado de individuos...
+		 */
 		System.out.println("CLIENTE: "+ result);
 		final double duration = (System.currentTimeMillis() - startTime)/1000.0;
 	    System.out.println("CLIENTE: Trabajo finalizado en " + duration + " segundos");
@@ -243,6 +278,13 @@ public class Cliente extends Configured implements Tool {
 		
 	}
 
+	/**
+	 * M&#233;todo de la clase <code>ToolRunner</code> que parsea los par&#225;metros 
+	 * introducidos por consola y ejecuta el m&#233;todo <code>launch</code> y accede 
+	 * a la configuraci&#243;n (clase <code>Configuration</code>) del HDFS subyacente.
+	 * @param args Array de par&#225;metros introducidos por consola.
+	 * @return C&#243;digo de salida (0-->"Ejecuci&#243;n correcta", -1-->"Error").
+	 */
 	@Override
 	public int run(String[] args) throws Exception {
 		if (args.length < 9) {
@@ -282,7 +324,13 @@ public class Cliente extends Configured implements Tool {
 		launch(numProblem, numIterations, sizePop, geneNumber, crossProb, boolElit, mutation, debug, endCriterial, target_phrase);
 		return 0;
 	}
-	
+	/**
+	 * M&#233;todo principal de la clase <code>Cliente</code> cuya &#250;nica funci&#243;n es 
+	 * llamar al m&#233;todo <code>run</code> de la misma clase.
+	 * 
+	 * @param argv Array de comandos introducidos por consola en tiempo de ejecucion.
+	 * @throws Exception Excepci&#243;n gen&#233;rica.
+	 */
 	public static void main(String[] argv) throws Exception {
 		int res = ToolRunner.run(new Configuration(), new Cliente(), argv);
 	}
