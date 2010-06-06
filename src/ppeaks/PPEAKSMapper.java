@@ -25,10 +25,11 @@ import targetphrase.TargetPhraseMapper;
 
 
 /**
- * 
- * Solution fitness ===> 1.0	(minimum fitness is 0.0)
- * Parameter ranges ===> 0 and 1
- * GOAL: locate a peak from P peaks
+ * Clase que implementa todas las funciones necesarias de un nodo <code>Mapper</code> 
+ * en un trabajo <code>MapReduce</code>: se encargará de evaluar el "fitness" de cada individuo,
+ * así como de generar los distintos pares <clave, fitness> necesarios para que los
+ * nodos <code>Reducer</code> los puedan procesar. 
+ * @author Alberto Luengo Cabanillas
  *
  */
 public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
@@ -52,9 +53,14 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		r = new Random(System.nanoTime());
 	}
 	
-	
+    /**
+	 * Método que calcula el "fitness" de cada individuo. En el caso del problema
+	 * <code>PPEAKS</code> calculará el pico más cercano a dicho individuo, siendo
+	 * el fitness óptimo a conseguir 1.0.
+	 * @param individual Individuo a procesar
+	 * @return Valor numérico con precisión <code>double</code> que representa el fitness del individuo.
+	 */
 	private DoubleWritable calculateFitness(String individual) {
-		LOG.info("***********DENTRO DEL FITNESS**********");
 		double fitness = 0.0;
 	    //Bits en comun con el pico mas cercano
 	    double nearest_peak = 999.0;
@@ -171,8 +177,13 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		}
 	}
 	
-	/**Una vez todos los elementos hayan sido procesados, escribimos en un
-	 * fichero global el mejor de ellos (si queremos introducir elitismo)...
+	/**
+	 * Método que, una vez todos los elementos hayan sido procesados, 
+	 * escribe en un fichero global el mejor de ellos (si se ha elegido
+	 * introducir elitismo).
+	 * @param debug Número entero (1-->"Sí", 0-->"No") que indica si interesa guardar un histórico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
+	 * @param bestIndiv Texto que representa al mejor individuo encontrado en una población por un <code>Mapper</code>, según los criterios del problema concreto.
+	 * @param bestFitness Número que representa al mejor fitness encontrado en una población por un <code>Mapper</code>, según los criterios del problema concreto.
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, double bestFitness) throws IOException {
 		String bestDir = "/user/"+USERNAME+"/bestIndividuals";

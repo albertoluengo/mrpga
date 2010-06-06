@@ -15,26 +15,29 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.pig.backend.executionengine.ExecException;
 
-
+/**
+ * Clase que leer&#224; los datos de entrada del cliente y ejecutar&#224; las iteraciones 
+ * recibidas hasta que encuentre un resultado apropiado o se agoten dichas iteraciones.
+ * @author Alberto Luengo Cabanillas
+ * @since 1.0
+ *
+ */
 public class Coordinador implements ICoordinador {
 
-	/**
-	 * Leera los datos de entrada del cliente y ejecutara las iteraciones recibidas
-	 * hasta que encuentre un resultado apropiado...
-	 * @throws IOException 
-	 * @throws ExecException 
-	 * @throws Exception
-	 */
 	Path localPopulationFile;
 	String USERNAME;
 	String hdfsPopString;
 	Path hdfsPopulationPath;
 	String subOptString; 
 	Path subOptimalResultsFilePath;
-	//Path pigResultFile= new Path("/user/hadoop-user/output/pigResults/part-00000");
 	Hashtable<String, Integer> hTable;
 	
-	//Inicializo las variables en el constructor...
+
+	/**
+	 * M&#233;todo constructor de la clase <code>Coordinador</code>
+	 * @param userName Nombre de usuario con permisos suficientes que lanza 
+	 * el trabajo MapReduce.
+	 */
 	Coordinador(String userName) {
 		localPopulationFile=new Path("./population.dat");
 		USERNAME = userName;
@@ -45,6 +48,14 @@ public class Coordinador implements ICoordinador {
 		hTable = new Hashtable();
 	}
 		
+	/**
+	 * M&#233;todo privado que se ocupa de borrar todos los directorios creados
+	 * durante las distintas ejecuciones del sistema.
+	 * @param fs Instancia de la clase <code>FileSystem</code> que representa
+	 * el sistema de ficheros <code>HDFS</code>.
+	 * @throws IOException Excepci&#243;n lanzada al haber alg&#250;n problema manipulando
+	 * ficheros o directorios.
+	 */
 	private void regenDirs(FileSystem fs) throws IOException {
 		Path outputPath = new Path("output");
 		Path inputPath = new Path("input");
@@ -202,7 +213,7 @@ public class Coordinador implements ICoordinador {
 			System.out.println("COORDINADOR["+i+"]: Acaba el script de Pig");
 			
 			/**
-			 * Si el parámetro "debug" está activado, vamos a crear un directorio nuevo en el que se van a ir colocando
+			 * Si el par&#224;metro "debug" est&#224; activado, vamos a crear un directorio nuevo en el que se van a ir colocando
 			 * todas las poblaciones, para poder ver su evolución...
 			 */
 			//
@@ -252,8 +263,7 @@ public class Coordinador implements ICoordinador {
 	
 	@Override
 	public void replacePopulationFile(Path originalPop, Path actualPopPath) throws IOException {
-		//Leemos el fichero de poblacion que tenemos en el HDFS y lo reemplazamos
-		//por el de la descendencia antes de entrar en la siguiente iteracion
+		//
 		Configuration conf = new Configuration();
 		FileSystem fs = FileSystem.get(conf);
 		//Path populationPath = new Path("input/population.txt");
@@ -272,6 +282,7 @@ public class Coordinador implements ICoordinador {
 	    }
 	}
 
+	
 	@Override
 	public void uploadToHDFS(JobContext cont, String population, int boolElit) throws IOException {
 		//Indicamos a que directorio del HDFS lo queremos subir...  
@@ -342,7 +353,7 @@ public class Coordinador implements ICoordinador {
 				
 			/**
 			 * Si es el problema 'frase objetivo' 
-			 * el mejor fitness sera el más pequeño...
+			 * el mejor fitness sera el m&#224;s pequeño...
 			 */
 			if (Integer.parseInt(numProblem) == 1)
 			{
@@ -358,7 +369,7 @@ public class Coordinador implements ICoordinador {
 			
 			/**
 			 * El resto de los problemas 
-			 * el mejor fitness sera el más alto...
+			 * el mejor fitness sera el m&#224;s alto...
 			 */
 			else 
 				if (Integer.parseInt(numProblem) == 3)

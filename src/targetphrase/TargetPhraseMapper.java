@@ -2,14 +2,11 @@ package targetphrase;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.Hashtable;
 import java.util.StringTokenizer;
-
-import java.net.URI;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -17,19 +14,18 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.SequenceFile.CompressionType;
-//import org.apache.hadoop.mapred.OutputCollector;
-import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.Mapper;
-//import org.apache.hadoop.mapred.Mapper;
-import org.apache.hadoop.mapreduce.Reducer.Context;
 
+/**
+ * Clase que implementa todas las funciones necesarias de un nodo <code>Mapper</code> 
+ * en un trabajo <code>MapReduce</code>: se encargará de evaluar el "fitness" de cada individuo,
+ * así como de generar los distintos pares <clave, fitness> necesarios para que los
+ * nodos <code>Reducer</code> los puedan procesar. 
+ * @author Alberto Luengo Cabanillas
+ */
 public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> {
 	
 	private Text subjectAsWord = new Text();
@@ -38,7 +34,14 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	private int numElemProcessed = 0;
 	private static final Log LOG = LogFactory.getLog(TargetPhraseMapper.class.getName());
 	
-	
+	/**
+	 * Método que calcula el "fitness" de cada individuo. En el caso del problema
+	 * <code>TargetPhrase</code> consistirá en incrementarlo en función de la
+	 * diferencia entre cada uno de los caracteres del individuo y de la frase
+	 * objetivo.
+	 * @param individual Individuo a procesar
+	 * @return Valor numérico con precisión <code>double</code> que representa el fitness del individuo.
+	 */
 	private IntWritable calculateFitness(String target, Text individual) {
 		int targetSize=target.length();
 		String textAsString = individual.toString();
@@ -113,8 +116,13 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 		}
 	}
 	
-	/**Una vez todos los elementos hayan sido procesados, escribimos en un
-	 * fichero global el mejor de ellos (si queremos introducir elitismo)...
+	/**
+	 * Método que, una vez todos los elementos hayan sido procesados, 
+	 * escribe en un fichero global el mejor de ellos (si se ha elegido
+	 * introducir elitismo).
+	 * @param debug Número entero (1-->"Sí", 0-->"No") que indica si interesa guardar un histórico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
+	 * @param bestIndiv Texto que representa al mejor individuo encontrado en una población por un <code>Mapper</code>, según los criterios del problema concreto.
+	 * @param bestFitness Número que representa al mejor fitness encontrado en una población por un <code>Mapper</code>, según los criterios del problema concreto.
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, int bestFitness) throws IOException {
 		String bestDir = "/user/"+USERNAME+"/bestIndividuals";

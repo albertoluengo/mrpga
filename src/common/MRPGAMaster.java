@@ -16,9 +16,22 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-
+/**
+ * Clase que representa el nodo Master del sistema <code>MapReduce</code> 
+ * implementado. Se encargará de lanzar el propio trabajo <code>MapReduce</code>,
+ * indicando cuál será la clase <code>Mapper</code>, cuál la <code>Reducer</code>,
+ * etc.
+ * @author Alberto Luengo Cabanillas
+ *
+ */
 public class MRPGAMaster extends Configured implements Tool {
 	
+	/**
+	 * Método que lanza un trabajo<code>MapReduce</code>, obteniendo la 
+	 * configuración necesaria del HDFS subyacente (parámetros, sistemas de ficheros,etc)
+	 * @param numProblem Número que indica el número de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
+	 * @param iter Iteracióna actual del sistema en el que se enmarca esta clase.
+	 */
 	void launch(int numProblem, String iter) {
 		Configuration conf = new Configuration();
 		Job job = null;
@@ -117,7 +130,13 @@ public class MRPGAMaster extends Configured implements Tool {
 		}
 	}
 		
-	
+	/**
+	 * Método de la clase <code>ToolRunner</code> que parsea los parámetros 
+	 * introducidos por consola y ejecuta el método <code>launch</code> y accede 
+	 * a la configuración (clase <code>Configuration</code>) del HDFS subyacente.
+	 * @param args Array de parámetros que recibe del <code>Coordinador</code>.
+	 * @return Código de salida (0-->"Ejecución correcta", -1-->"Error").
+	 */
 	public int run(String[] args) throws Exception {
 		int	numProblem = Integer.parseInt(args[0]);
 		String iter = args[1];
@@ -125,6 +144,13 @@ public class MRPGAMaster extends Configured implements Tool {
 		return 0;
 	}
 	
+	/**
+	 * Método principal de la clase <code>MRPGAMaster</code> cuya única función es 
+	 * llamar al método <code>run</code> de la misma clase.
+	 * 
+	 * @param argv Array de comandos recibidos del <code>Coordinador</code>.
+	 * @throws Exception Excepción genérica.
+	 */
 	public static void main(String[] argv) throws Exception {
 		int res = ToolRunner.run(new Configuration(), new MRPGAMaster(), argv);
 	}

@@ -14,11 +14,16 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Mapper.Context;
 
+/**
+ * Clase que implementa todas las funciones necesarias de un nodo <code>Mapper</code> 
+ * en un trabajo <code>MapReduce</code>: se encargará de evaluar el "fitness" de cada individuo,
+ * así como de generar los distintos pares <clave, fitness> necesarios para que los
+ * nodos <code>Reducer</code> los puedan procesar. 
+ * @author Alberto Luengo Cabanillas
+ */
 public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 
 	//Representacion del individuo...
@@ -27,7 +32,13 @@ public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	private String USERNAME;
 	private Hashtable mapParameters = new Hashtable();
 	
-	
+	/**
+	 * Método que calcula el "fitness" de cada individuo. En el caso del problema
+	 * <code>OneMAX</code> consistirá en incrementarlo en el caso de que el gen
+	 * del individuo sea "1".
+	 * @param individual Individuo a procesar
+	 * @return Valor numérico con precisión <code>double</code> que representa el fitness del individuo.
+	 */
 	private DoubleWritable calculateFitness(String individual) {		
 		double fitness = 0.0;
 		for (int i=0; i<individual.length(); i++) {
@@ -101,8 +112,13 @@ public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		}
 	}
 	
-	/**Una vez todos los elementos hayan sido procesados, escribimos en un
-	 * fichero global el mejor de ellos (si queremos introducir elitismo)...
+	/**
+	 * Método que, una vez todos los elementos hayan sido procesados, 
+	 * escribe en un fichero global el mejor de ellos (si se ha elegido
+	 * introducir elitismo).
+	 * @param debug Número entero (1-->"Sí", 0-->"No") que indica si interesa guardar un histórico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
+	 * @param bestIndiv Texto que representa al mejor individuo encontrado en una población por un <code>Mapper</code>, según los criterios del problema concreto.
+	 * @param bestFitness Número que representa al mejor fitness encontrado en una población por un <code>Mapper</code>, según los criterios del problema concreto.
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, double bestFitness) throws IOException {
 		String bestDir = "/user/"+USERNAME+"/bestIndividuals";
@@ -121,7 +137,8 @@ public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		FSDataOutputStream dos = hdfs.create(bestIndivPath);
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dos));
 		/**
-		 * Escribo el valor del individuo y su fitness, para que luego el Reducer lo lea...
+		 * Escribo el valor del individuo y su fitness, para que luego el 
+		 * Reducer lo lea...
 		 */
 		bw.write(bestIndiv.toString()+"\n");
 		bw.write(bestFitness+"\n");
