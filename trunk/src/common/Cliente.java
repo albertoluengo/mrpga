@@ -1,22 +1,17 @@
 package common;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Random;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.apache.pig.PigServer;
-import org.apache.pig.backend.executionengine.ExecException;
 
 /**
  * Las funciones del cliente seran basicamente de introducir datos al sistema e inicializar
@@ -36,15 +31,14 @@ public class Cliente extends Configured implements Tool {
 			String individuo = "";
 			int sizeTarget=target.length();
 			Random r = new Random(System.nanoTime());
-//			char spanish_chars[]={'!','¡','.','¿','?','_',',',';','á','é','í','ó','ú'};
-//			Arrays.sort(spanish_chars);
+			char spanish_chars[]={'!','¡','.','¿','?','_',',',';','á','é','í','ó','ú'};
+			Arrays.sort(spanish_chars);
 			int i=0;
-			//int position = 0;
+			int position = 0;
 				while ( i < sizeTarget){
 					char c = (char)r.nextInt(255);
-					//position = Arrays.binarySearch(spanish_chars, c);
-					//position = 1;
-					if((c>='0' && c<='9') || (c>='a' && c<='z') || (c>='A' && c<='Z'))
+					position = Arrays.binarySearch(spanish_chars, c);
+					if((c>='0' && c<='9') || (c>='a' && c<='z') || (c>='A' && c<='Z') || (position > 0))
 					{
 						individuo += c;
 						i ++;
@@ -199,7 +193,9 @@ public class Cliente extends Configured implements Tool {
 		} catch (IOException e){e.printStackTrace();}	
 	}
 	
-	void launch(String numProblem, int maxIter, int population, double crossProb, int boolElit, int mutation, int debug, int endCriterial) {
+	
+	void launch(String numProblem, int maxIter, int population, int geneNumber, double crossProb, int boolElit, int mutation, int debug, int endCriterial, String targetPhrase) {
+		
 		Configuration conf = new Configuration();
 		FileSystem fs = null;
 		try {
@@ -211,55 +207,20 @@ public class Cliente extends Configured implements Tool {
 		String users = conf.get("hadoop.job.ugi");
 		String[] commas = users.split(",");
 		String userName = commas[0];
-		
-		//PARAMETROS PROBLEMA TARGET_PHRASE
-		int gene_number = 0;
-		String target="Hello_world!";
 		String result ="";
+	
 		//Como se van a generar individuos con un numero de genes igual a la longitud
 		//de la palabra objetivo, su posibilidad de mutación será su inversa...
-		float mutationrate= 1.0f/(float)target.length();
-		
-		
-		//PARAMETROS PROBLEMA ONEMAX
-//		int population= 512;
-//	    int gene_number = 64;
-//		int maxiter = 1;
-//		int boolElit = 1;
-//		int mutation = 1;
-//		float mutationrate= 1.0f/(float)gene_number;
-//		double crossProb = 0.6;
-//		int debug = 1;
-//		String result ="";
-//		String numProblem = "2"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
-//		String target = "";
-//		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
-		
-		//PARAMETROS PROBLEMA PPEAKS
-//		int population= 512;
-//	    int gene_number = 32;
-//		int maxiter = 1;
-//		int boolElit = 1;
-//		int mutation = 1;
-//		float mutationrate= 1.0f/(float)gene_number;
-//		double crossProb = 0.6;
-//		int debug = 1;
-//		String result ="";
-//		String numProblem = "3"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
-//		String target = "";
-//		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
-		
-		
-		
+		float mutationrate= 1.0f/(float)targetPhrase.length();
 		Coordinador coord = new Coordinador(userName);
 		
 		/**
 		 * PASO 1.- Generamos la poblacion inicial y los ficheros de configuracion 
 		 * para los nodos Worker... 
 		 */
-		generatePopulationFile(target,population,gene_number,Integer.parseInt(numProblem));
-		generateMapperConfigurationFile(target, population, boolElit, debug,gene_number);
-		generateReducerConfigurationFile(population, maxIter,boolElit,mutationrate,mutation,crossProb,target); 
+		generatePopulationFile(targetPhrase,population,geneNumber,Integer.parseInt(numProblem));
+		generateMapperConfigurationFile(targetPhrase, population, boolElit, debug,geneNumber);
+		generateReducerConfigurationFile(population, maxIter, boolElit, mutationrate, mutation, crossProb, targetPhrase); 
 		
 
 		/**
@@ -268,14 +229,14 @@ public class Cliente extends Configured implements Tool {
 		System.out.println("CLIENTE: Lanzando trabajo...");
         final long startTime = System.currentTimeMillis();
 		try {
-			result = coord.readFromClientAndIterate(population, maxIter, debug, boolElit, numProblem, endCriterial,gene_number);
+			result = coord.readFromClientAndIterate(population, maxIter, debug, boolElit, numProblem, endCriterial,geneNumber);
 		} catch (IOException e) {
 			System.err.println("CLIENTE: Se ha producido un error de I/O en la conexion al HDFS");
 		}catch (Exception e) {
 		// TODO Auto-generated catch block
 		System.err.println("CLIENTE: Se ha producido un error generico ejecutando el codigo del Master");
 		}
-		System.out.println("CLIENTE: Job finished! "+result);
+		System.out.println("CLIENTE: "+ result);
 		final double duration = (System.currentTimeMillis() - startTime)/1000.0;
 	    System.out.println("CLIENTE: Trabajo finalizado en " + duration + " segundos");
 		System.out.println("****FIN DE EJECUCION****");
@@ -284,20 +245,41 @@ public class Cliente extends Configured implements Tool {
 
 	@Override
 	public int run(String[] args) throws Exception {
-		if (args.length != 8) {
-			System.err.println("Usage: mrpga <numProblem> <nIterations> <sizePop> <crossProb> <boolElit> <mutation> <debug> <endCriterial>");
+		if (args.length < 9) {
+			System.err.println("***********************************");
+			System.err.println("Uso: "+ getClass().getName()+" <numProblem> <nIterations> <sizePop> <geneNumber> <crossProb> <boolElit> <mutation> <debug> <endCriterial> [<targetPhrase>]");
+			System.err.println("***********************************");
 			ToolRunner.printGenericCommandUsage(System.err);
+			System.err.println("***********************************");
 			return -1;
 		}
 		String numProblem = args[0];
+		System.out.println("NUMPROBLEM: "+numProblem);
 		int	numIterations = Integer.parseInt(args[1]);
+		System.out.println("NUM ITERATIONS: "+numIterations);
 		int sizePop = Integer.parseInt(args[2]);
-		double crossProb = Double.parseDouble(args[3]);
-		int boolElit = Integer.parseInt(args[4]);
-		int mutation = Integer.parseInt(args[5]);
-		int debug = Integer.parseInt(args[6]);
-		int endCriterial = Integer.parseInt(args[7]);
-		launch(numProblem, numIterations, sizePop, crossProb, boolElit, mutation, debug, endCriterial);
+		System.out.println("POPULATION: "+sizePop);
+		int geneNumber = Integer.parseInt(args[3]);
+		System.out.println("GENE NUMBER: "+geneNumber);
+		double crossProb = Double.parseDouble(args[4]);
+		System.out.println("CROSSPROB: "+crossProb);
+		int boolElit = Integer.parseInt(args[5]);
+		System.out.println("ELITISM?: "+boolElit);
+		int mutation = Integer.parseInt(args[6]);
+		System.out.println("MUTATION?: "+mutation);
+		int debug = Integer.parseInt(args[7]);
+		System.out.println("DEBUG?: "+debug);
+		int endCriterial = Integer.parseInt(args[8]);
+		System.out.println("END CRITERIAL: "+endCriterial);
+		String target_phrase = "";
+		try {
+			target_phrase = args[9];
+		}
+		catch (ArrayIndexOutOfBoundsException e){
+			target_phrase = "Hello_world!";
+		}
+		System.out.println("TARGET PHRASE: "+target_phrase);
+		launch(numProblem, numIterations, sizePop, geneNumber, crossProb, boolElit, mutation, debug, endCriterial, target_phrase);
 		return 0;
 	}
 	

@@ -60,9 +60,7 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		String[] commas = users.split(",");
 		USERNAME = commas[0];
 		String HDFS_REDUCER_CONFIGURATION_FILE="/user/"+USERNAME+"/data/reducer_configuration.dat";
-		String BEST_INDIVIDUAL_FILE="/user/"+USERNAME+"/bestIndividuals/bestIndiv.txt";
 		Path path = new Path(HDFS_REDUCER_CONFIGURATION_FILE);
-		Path bestIndPath = new Path(BEST_INDIVIDUAL_FILE);
 		
 		
 		//Validamos primero los path de entrada antes de leer del fichero
@@ -80,23 +78,16 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		
 		
 		FSDataInputStream dis = hdfs.open(path);
-		FSDataInputStream dis2 = hdfs.open(bestIndPath);
 		BufferedReader br = new BufferedReader(new InputStreamReader(dis));
-		BufferedReader br2 = new BufferedReader(new InputStreamReader(dis2));
 		String strLine;
 		String[]keys = {"numPopulation","maxIterations","boolElit","mutationRate","mutation","crossProb","targetPhrase"};
-		String[]bestIndKeys = {"bestIndiv","bestFitness"};
 		int index = 0;
-		int index2=0;
+		tournIndiv = new String[tournamentSize];
+		tournamentArray = new String[tournamentSize][tournamentSize];
 		while ((strLine = br.readLine()) != null)   {
 			parameters.put(keys[index], strLine);
 		    index++;
 		  }
-		while ((strLine = br2.readLine()) != null)   {
-			bestIndivTable.put(bestIndKeys[index2], strLine);
-		    index2++;
-		  }
-		
 		dis.close();
 		numPop = Integer.parseInt((String)parameters.get("numPopulation"));
 		boolElit = Integer.parseInt((String)parameters.get("boolElit"));
@@ -104,24 +95,30 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		mutationRate = Double.parseDouble((String)parameters.get("mutationRate"));
 		crossProb = Double.parseDouble((String)parameters.get("crossProb"));
 		
-		//tournIndiv = new String[targetPhrase.length()];
-		tournIndiv = new String[tournamentSize];
-		//tournamentArray = new String[2*tournamentSize][targetPhrase.length()];
-		tournamentArray = new String[tournamentSize][tournamentSize];
-		
 		
 		/**Si esta activada la opcion del elitismo, 
 		 * escribimos el mejor elemento en la salida...
 		 */
 		if (boolElit == 1) {
+			String BEST_INDIVIDUAL_FILE="/user/"+USERNAME+"/bestIndividuals/bestIndiv.dat";
+			Path bestIndPath = new Path(BEST_INDIVIDUAL_FILE);
+			int index2=0;
+			FSDataInputStream dis2 = hdfs.open(bestIndPath);
+			BufferedReader br2 = new BufferedReader(new InputStreamReader(dis2));
+			String[]bestIndKeys = {"bestIndiv","bestFitness"};
+			while ((strLine = br2.readLine()) != null)   {
+				bestIndivTable.put(bestIndKeys[index2], strLine);
+			    index2++;
+			  }
+			dis2.close();
+			
 			bestInd = new Text((String)bestIndivTable.get("bestIndiv"));
 			bestIndFitness = Double.parseDouble((String)bestIndivTable.get("bestFitness"));
 			try {
 				cont.write(bestInd, new DoubleWritable(bestIndFitness));
 			} catch (InterruptedException e) {
 				e.printStackTrace();
-			}
-			
+			}	
 		}
 	}
 	
@@ -222,15 +219,20 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	
 	public void closeAndWrite(Context context) throws IOException, InterruptedException {
 		LOG.info("*****TODOS LOS ELEMENTOS HAN SIDO PROCESADOS******");
-		
-		double bestGroupFitness = -99999;
-		for (int i = 0; i < tournIndiv.length; i++) {
-			tournamentArray[indWinner][i] = tournIndiv[i];
-			if (tournamentFitness[i] > bestGroupFitness)
-				bestGroupFitness = tournamentFitness[i];
+		//Acabamos con la ultima ventana del torneo...
+		for (int lastIter=0; lastIter <tournamentSize;lastIter++)
+		{
+			double bestGroupFitness = -99999;
+			for (int i = 0; i < tournIndiv.length; i++) {
+				tournamentArray[indWinner][i] = tournIndiv[i];
+				if (tournamentFitness[i] > bestGroupFitness)
+					bestGroupFitness = tournamentFitness[i];
+			}
+			tournamentGroupFitness[indWinner] = bestGroupFitness;
+			selectionAndCrossover(numElemProcessed, tournamentArray, context);
+			numElemProcessed += lastIter;
 		}
-		tournamentGroupFitness[indWinner] = bestGroupFitness;
-		selectionAndCrossover(numElemProcessed, tournamentArray, context);
+		
 	}
 	
 	private void selectionAndCrossover(int numElemProcessed, String[][]tournArray,Context context){

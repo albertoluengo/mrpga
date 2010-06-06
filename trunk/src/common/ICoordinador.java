@@ -25,10 +25,8 @@ import org.apache.pig.backend.executionengine.ExecException;
 public interface ICoordinador {
 
 	public String readFromClientAndIterate(int numpop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number)throws Exception;
-	public void uploadToHDFS(JobContext cont, String population) throws IOException;
+	public void uploadToHDFS(JobContext cont, String population, int boolElit) throws IOException;
 	public void replacePopulationFile(Path original, Path actual) throws IOException;
-	public void runPigScript(String filePath, int iterations, Configuration conf)throws ExecException, IOException;
 	public String printBestIndividual(Hashtable hashTable, String numProblem);
 	public Hashtable generateIndividualsTable(Path filePath, String numProblem)throws IOException;
-	public String readFromHDFS(String stringPath);
 }

@@ -13,7 +13,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.pig.*;
 import org.apache.pig.backend.executionengine.ExecException;
 
 
@@ -127,7 +126,7 @@ public class Coordinador implements ICoordinador {
 		
 		//Simulamos el criterio de fin de ejecución por consecución del objetivo con un numero de iteraciones muy elevado
 		if (endCriterial == 1) {
-			maxiter = 100000;
+			maxiter = 1000000;
 		}
 			
 		for (int i=0; i<maxiter; i++) 
@@ -141,15 +140,15 @@ public class Coordinador implements ICoordinador {
 			Path currentPopulationFilePath = new Path (currPopString);
 			
 			//Si es la primera iteracion, leemos el fichero localmente...
-			if (i==0) this.uploadToHDFS(jCont, localPopulationFile.toString());		
+			if (i==0) this.uploadToHDFS(jCont, localPopulationFile.toString(),boolElit);		
 			
-			System.out.println("COORDINADOR["+i+"]: Llamo al master");
+			System.out.println("COORDINADOR["+i+"]: SE LLAMA AL MASTER");
 			//Le paso los argumentos...
 			args[0] = numProblem;
 			String iteration=i+"";
 			args[1] = iteration;
 			MRPGAMaster.main(args);
-			System.out.println("COORDINADOR["+i+"]: Acaba el master");
+			System.out.println("COORDINADOR["+i+"]: ACABA EL MASTER");
 			
 			/**Miramos si en la poblacion resultante tenemos el resultado objetivo... 
 			 */
@@ -160,59 +159,53 @@ public class Coordinador implements ICoordinador {
 			 * su fitness ideal sera 0
 			 */
 			if (numProblem == "1")
-				if (hTable.containsValue(0)) 
+				if (hTable.containsValue(0))
+				{
+					System.out.println("COORDINADOR[TARGETPHRASE]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
 					break;
+				}
+					
 				else 
-					System.out.println("COORDINADOR["+i+"][TARGETPHRASE]: EN LA ITERACION "+i+" NO ENCUENTRO EL FITNESS OBJETIVO");
+					System.out.println("COORDINADOR[TARGETPHRASE]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
 			
 			/**
 			 * Si el problema es 'OneMax', su fitness ideal 
 			 * sera la longitud total del individuo a 1
 			 */
 			if (numProblem == "2")
-				if (hTable.containsValue(gene_number)) 
+				if (hTable.containsValue(gene_number))
+				{
+					System.out.println("COORDINADOR[ONEMAX]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
 					break;
+				}
 				else 
-					System.out.println("COORDINADOR["+i+"][ONEMAX]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+					System.out.println("COORDINADOR[ONEMAX]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
 			
 			/**
 			 * Si el problema es 'PPeaks', 
 			 * su fitness ideal sera 1 (el individuo mas cercano a un pico dado)...
 			 */
 			if (numProblem == "3")
-				if (hTable.containsValue(1)) 
+				if (hTable.containsValue(1))
+				{
+					System.out.println("COORDINADOR[PPEAKS]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
 					break;
+				}
 				else 
-					System.out.println("COORDINADOR["+i+"][PPEAKS]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
+					System.out.println("COORDINADOR[PPEAKS]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
 			
-			System.out.println("COORDINADOR["+i+"]: Llamo al script de Pig");
+			System.out.println("COORDINADOR["+i+"]: Comienza el script de Pig");
 			PigFunction pigFun = new PigFunction();
 			args2[0] = subOptimalResultsFilePath.toString();
 			args2[1] = i+"";
-//			String s=null;
-//			Process p = Runtime.getRuntime().exec("javac PigFunction.java");
-//			BufferedReader stdInput = new BufferedReader(new 
-//             InputStreamReader(p.getInputStream()));
-//	        BufferedReader stdError = new BufferedReader(new 
-//	             InputStreamReader(p.getErrorStream()));
-//	
-//	        // read the output from the command
-//	        System.out.println("Here is the standard output of the command:\n");
-//	        while ((s = stdInput.readLine()) != null) {
-//	            System.out.println(s);
-//	        }
-//	        
-//	     // read any errors from the attempted command
-//            System.out.println("Here is the standard error of the command (if any):\n");
-//            while ((s = stdError.readLine()) != null) {
-//                System.out.println(s);
-//            }
 			pigFun.main(args2);
-			//this.runPigScript(subOptimalResultsFilePath.toString(),i,conf);
 			System.out.println("COORDINADOR["+i+"]: Acaba el script de Pig");
 			
-			//Si el parámetro "debug" está activado, vamos a crear un directorio nuevo en el que se van a ir colocando
-			//todas las poblaciones, para poder ver su evolución...
+			/**
+			 * Si el parámetro "debug" está activado, vamos a crear un directorio nuevo en el que se van a ir colocando
+			 * todas las poblaciones, para poder ver su evolución...
+			 */
+			//
 			if (debug==1) 
 			{
 				fs.mkdirs(oldPopulationsDirPath);
@@ -234,63 +227,29 @@ public class Coordinador implements ICoordinador {
 					//Copiamos el fichero como entrada de la siguiente iteracion...
 					FileUtil.copy(fs, currentPopulationFilePath, fs, targetFilePopPath, false, conf);
 				}
-			}	
+			}
+			//Si no se guarda el historico de poblaciones, las vamos eliminando... 
+			else
+			{
+				if (i == 0)
+					//Borramos el fichero de poblacion original...
+					fs.delete(hdfsPopulationPath, true);
+				else
+				{
+					//Borramos el fichero de poblacion de la descendencia anterior...
+					String prevPopString = "/user/"+USERNAME+"/input/population_"+(i-1)+".dat"; 
+					fs.delete(new Path(prevPopString), true);
+				}
+			}
 		}
-		//Si no se introduce elitismo, imprimimos el(los) mejor(es) individuo(s) que hayamos encontrado...
-		System.out.println("COORDINADOR: Imprimo el mejor individuo...");
+		//Imprimimos el(los) mejor(es) individuo(s) que hayamos encontrado...
+		System.out.println("COORDINADOR: IMPRESIÓN DEL(DE LOS) MEJOR(ES) INDIVIDUO(S)...");
 		bestIndividual = printBestIndividual(hTable,numProblem);
-		System.out.println("COORDINADOR: Acabo de imprimir el mejor individuo...");
+		//System.out.println("COORDINADOR: Acabo de imprimir el mejor individuo...");
 	return bestIndividual;
 	}
 
-	/**
-	 * Este metodo ejecuta codigo Pig Latin embebido en Java, de tal forma que recopile los
-	 * distintos individuos sub-optimos que generen los "reduce" locales (que estaran almacenados
-	 * en un formato de documento de texto) y aplique sobre ellos las operaciones que necesitemos
-	 * (merge, order, filter y select -en principio...). Ademas le tendra que enviar el fichero
-	 * resultante con la poblacion optima de la iteracion al Coordinador, para que este se la 
-	 * pase al master y comience una nueva iteracion
-	 * @author Alberto Luengo Cabanillas
-	 *
-	 */
-	@Override
-	public void runPigScript(String inputFile, int iteration, Configuration conf) throws ExecException, IOException {
-		
-		//Tenemos que leer un fichero del HDFS
-		//System.out.println("COORDINADOR["+iteration+"]: Dentro del script de Pig");
-		FileSystem fs = FileSystem.get(conf);
-		Path resultPath = new Path("pigResults");
-	    
-	    try {
-	    	if (fs.exists(resultPath)) {
-	    		//Borro el directorio con todo su contenido
-	    		fs.delete(resultPath,true);
-	    	}
-	    }
-	    catch (IOException ioe) {
-	    	System.err.println("COORDINADOR["+iteration+"]:Se ha producido un error borrando el dir de salida de Pig");
-	    	System.exit(1);
-	    }
-		
-	    String popIterationName = "input/population_"+iteration+".dat";
-		PigServer pigServer = new PigServer("mapreduce");
-		
-		//PigContext pigContext = pigServer.getPigContext();
-		//String jobName = "pigPopulation";
-		//pigServer.getPigContext().getProperties().setProperty(PigContext.JOB_NAME,jobName);
-		pigServer.registerQuery("raw_data = load '" + inputFile + "' using PigStorage('	');");
-		pigServer.registerQuery("B = foreach raw_data generate $0 as id;");
-		pigServer.registerQuery("store B into 'pigResults';");
-		pigServer.renameFile("pigResults/part-00000", popIterationName);
-		
-		//Cuando acabo, borro el contenido del dir 'pigResults' (en el que sólo quedarán los logs...)
-		fs.delete(resultPath,true);
-		
-		//pigServer.registerQuery("grouped = group raw_data by $0;");
-		//pigServer.registerQuery("data = foreach grouped generate FLATTEN(group) as value;");
-		//pigServer.registerQuery("full = foreach A generate $0 as id;");
-		
-	}
+	
 	@Override
 	public void replacePopulationFile(Path originalPop, Path actualPopPath) throws IOException {
 		//Leemos el fichero de poblacion que tenemos en el HDFS y lo reemplazamos
@@ -302,7 +261,6 @@ public class Coordinador implements ICoordinador {
 		
 	    try {
 	    	if (fs.exists(originalPop)) {
-	    		System.out.println("Dentro del replaceFile: Sí existe el originalPop...");
 	    		//remove the file first
 	    		fs.delete(originalPop,true);
 	    		fs.rename(actualPopPath, hdfsPopulationPath);
@@ -315,7 +273,7 @@ public class Coordinador implements ICoordinador {
 	}
 
 	@Override
-	public void uploadToHDFS(JobContext cont, String population) throws IOException {
+	public void uploadToHDFS(JobContext cont, String population, int boolElit) throws IOException {
 		//Indicamos a que directorio del HDFS lo queremos subir...  
 		final String HDFS_POPULATION_FILE= "/user/"+USERNAME+"/input/population.dat";
 		
@@ -340,9 +298,12 @@ public class Coordinador implements ICoordinador {
 		fs.copyFromLocalFile(false, true, new Path(LOCAL_MAPPER_CONFIGURATION_FILE), hdfsConfMapPath);
 		fs.copyFromLocalFile(false, true, new Path(LOCAL_REDUCER_CONFIGURATION_FILE), hdfsConfRedPath);
 		
-		//Creamos el directorio para ir almacenando los mejores individuos de cada iteracion...
-		String bestIndString = "/user/"+USERNAME+"/bestIndividuals";
-		fs.mkdirs(new Path(bestIndString));
+		//Si el elitismo esta presente, creamos el directorio para ir almacenando los mejores individuos de cada iteracion...
+		if (boolElit == 1)
+		{
+			String bestIndString = "/user/"+USERNAME+"/bestIndividuals";
+			fs.mkdirs(new Path(bestIndString));
+		}
 		
 		//Mandamos el fichero de configuracion a todos los nodos...
 		//DistributedCache.addCacheFile(hdfsConfMapPath.toUri(),cont.getConfiguration());
@@ -375,6 +336,9 @@ public class Coordinador implements ICoordinador {
 			else
 				fitValFloat = Float.parseFloat(hashTable.get(clave).toString());
 			
+			//System.out.println("EL VALOR TAL CUAL ES "+hashTable.get(clave).toString());
+			//System.out.println("EL FITVALFLOAT ES "+fitValFloat);
+			//System.out.println("EL FITVALDOUBLE ES "+Double.parseDouble(hashTable.get(clave).toString()));
 				
 			/**
 			 * Si es el problema 'frase objetivo' 
@@ -420,41 +384,14 @@ public class Coordinador implements ICoordinador {
 						bestTable.put(clave, fitValue);
 				}
 		}
-		String result = "Best individual(s) found is (are): "+bestTable;
+		String result ="Se ha producido algún error previo a la impresión de individuos...";
+		if (bestTable.size() == 1)
+			result = "El mejor individuo encontrado es: "+bestTable;
+		else
+			result = "Los mejores individuos encontrados son: "+bestTable;
 		return result;
 	}
 	
-	@Override
-	public String readFromHDFS(String stringPath) {
-		Path pathToRead = new Path(stringPath);
-		FileSystem hdfs;
-		String strLine = "", bestIndividual = "", result = "";
-		try {
-			hdfs = FileSystem.get(new Configuration());
-			//Validamos primero el path de entrada antes de leer del fichero
-			if (!hdfs.exists(pathToRead))
-			{
-				throw new IOException("El fichero especificado " +pathToRead.toString() + "no existe");
-			}
-			
-			if (!hdfs.isFile(pathToRead))
-			{
-				throw new IOException("El fichero especificado "+pathToRead.toString() + "no existe");
-			}
-			FSDataInputStream dis = hdfs.open(pathToRead);
-			BufferedReader br = new BufferedReader(new InputStreamReader(dis));
-			
-			while ((strLine = br.readLine()) != null)   {
-				bestIndividual = strLine;
-		      }
-			dis.close();
-			result = "Best individual: "+bestIndividual;
-		
-		} catch (IOException e) {
-			result="ERROR READING FILE FROM HDFS:IOEXCEPTION";
-		}
-		return result;
-	}
 
 	@Override
 	public Hashtable generateIndividualsTable(Path resultsPath, String numProblem) throws IOException {
@@ -496,7 +433,7 @@ public class Coordinador implements ICoordinador {
 				 * valores double...
 				 */
 				double valor = Double.parseDouble(fitness);
-				if (numProblem != "3")
+				if (Integer.parseInt(numProblem)!= 3)
 					valor = (int)valor;
 				hTable.put(keyWord, valor);
 			}

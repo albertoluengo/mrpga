@@ -51,7 +51,6 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	
 	@Override
 	protected void setup(Context cont)throws IOException {
-		LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
 		Configuration conf = cont.getConfiguration();
 		FileSystem hdfs = FileSystem.get(conf);
 		String users = conf.get("hadoop.job.ugi");
