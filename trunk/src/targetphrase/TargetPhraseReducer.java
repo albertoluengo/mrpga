@@ -81,7 +81,7 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		String[] commas = users.split(",");
 		USERNAME = commas[0];
 		String HDFS_REDUCER_CONFIGURATION_FILE="/user/"+USERNAME+"/data/reducer_configuration.dat";
-		String BEST_INDIVIDUAL_FILE="/user/"+USERNAME+"/bestIndividuals/bestIndiv.txt";
+		String BEST_INDIVIDUAL_FILE="/user/"+USERNAME+"/bestIndividuals/bestIndiv.dat";
 		Path path = new Path(HDFS_REDUCER_CONFIGURATION_FILE);
 		Path bestIndPath = new Path(BEST_INDIVIDUAL_FILE);
 		
@@ -245,15 +245,20 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	
 	public void closeAndWrite(Context context) throws IOException, InterruptedException {
 		LOG.info("*****TODOS LOS ELEMENTOS HAN SIDO PROCESADOS******");
-		
-		int bestGroupFitness = 99999;
-		for (int i = 0; i < tournIndiv.length; i++) {
-			tournamentArray[indWinner][i] = tournIndiv[i];
-			if (tournamentFitness[i] < bestGroupFitness)
-				bestGroupFitness = tournamentFitness[i];
+		//Acabamos con la ultima ventana del torneo...
+		for (int lastIter=0; lastIter <tournamentSize;lastIter++)
+		{
+			int bestGroupFitness = 99999;
+			for (int i = 0; i < tournIndiv.length; i++) {
+				tournamentArray[indWinner][i] = tournIndiv[i];
+				if (tournamentFitness[i] < bestGroupFitness)
+					bestGroupFitness = tournamentFitness[i];
+			}
+			tournamentGroupFitness[indWinner] = bestGroupFitness;
+			selectionAndCrossover(numElemProcessed, tournamentArray, context);
+			numElemProcessed += lastIter;
 		}
-		tournamentGroupFitness[indWinner] = bestGroupFitness;
-		selectionAndCrossover(numElemProcessed, tournamentArray, context);
+		
 	}
 	
 	private void selectionAndCrossover(int numElemProcessed, String[][]tournArray,Context context){

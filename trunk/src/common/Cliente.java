@@ -9,6 +9,13 @@ import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Random;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+import org.apache.pig.PigServer;
 import org.apache.pig.backend.executionengine.ExecException;
 
 /**
@@ -22,22 +29,22 @@ import org.apache.pig.backend.executionengine.ExecException;
  * 
  */
 
-public class Cliente {
+public class Cliente extends Configured implements Tool {
 
 	
 	private static String generateRandomString(String target) {
 			String individuo = "";
 			int sizeTarget=target.length();
 			Random r = new Random(System.nanoTime());
-			char spanish_chars[]={'!','¡','.','¿','?','_',',',';','á','é','í','ó','ú'};
-			Arrays.sort(spanish_chars);
+//			char spanish_chars[]={'!','¡','.','¿','?','_',',',';','á','é','í','ó','ú'};
+//			Arrays.sort(spanish_chars);
 			int i=0;
-			int position = 0;
+			//int position = 0;
 				while ( i < sizeTarget){
 					char c = (char)r.nextInt(255);
-					Arrays.sort(spanish_chars);
-					position = Arrays.binarySearch(spanish_chars, c);
-					if((c>='0' && c<='9') || (c>='a' && c<='z') || (c>='A' && c<='Z') || (position>=0))
+					//position = Arrays.binarySearch(spanish_chars, c);
+					//position = 1;
+					if((c>='0' && c<='9') || (c>='a' && c<='z') || (c>='A' && c<='Z'))
 					{
 						individuo += c;
 						i ++;
@@ -66,7 +73,7 @@ public class Cliente {
 	private static void generatePopulationFile(String target, int sizePop, int geneNumber, int numProblem) {
 		
 		//Instanciamos el fichero...
-		String sFile ="population.txt";
+		String sFile ="population.dat";
 		File initPop = new File("./",sFile);
 		//Miramos si existe...
 		if (initPop.exists()){
@@ -93,14 +100,14 @@ public class Cliente {
 			String word="";
 			int i=0;
 			while (i <sizePop) {
-				if (numProblem == 1) //Caso del problema de la 'frase objetivo'
+				if (numProblem == 1) //Caso del problem de la 'frase objetivo'
 					//Generamos la palabra descendiente...
 					word=generateRandomString(target);
 				else
 					//Generamos el individuo binario...
 					word=generateRandomBinaryString(geneNumber);
 				//Escribimos a fichero...	
-				bw.write(word +"\r\n");
+				bw.write(word +"\n");
 				i++;
 			}
 			//Cerramos el fichero
@@ -154,7 +161,6 @@ public class Cliente {
 	//Master lo distribuya entre los nodos trabajadores...
 	private static void generateReducerConfigurationFile(int numpop, int maxiter, int boolElit,
 			float mutationrate, int mutation, double crossProb, String target) {
-		
 		//Instanciamos el fichero...
 		String sFile ="reducer_configuration.dat";
 		File initPop = new File("./",sFile);
@@ -193,34 +199,26 @@ public class Cliente {
 		} catch (IOException e){e.printStackTrace();}	
 	}
 	
-	public static void main(String[] args) throws IOException {
-		// TODO Auto-generated method stub
-
-		/*int population = 0;
-		int maxiter = 0;
-		float elitrate = 0;
-		float mutationrate = 0;
-		double rand = Math.random();
-		float mutation = 0;
-		String target ="";*/
-		
-		
+	void launch(String numProblem, int maxIter, int population, double crossProb, int boolElit, int mutation, int debug, int endCriterial) {
+		Configuration conf = new Configuration();
+		FileSystem fs = null;
+		try {
+			fs = FileSystem.get(conf);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		String users = conf.get("hadoop.job.ugi");
+		String[] commas = users.split(",");
+		String userName = commas[0];
 		
 		//PARAMETROS PROBLEMA TARGET_PHRASE
-//		int population= 512;
-//		int maxiter = 1;
-//		int boolElit = 1;
-//		int gene_number = 0;
-//		String target="Hello_world!";
-//		//Como se van a generar individuos con un numero de genes igual a la longitud
-//		//de la palabra objetivo, su posibilidad de mutación será su inversa...
-//		int mutation = 1;
-//		float mutationrate= 1.0f/(float)target.length();
-//		double crossProb = 0.6;
-//		int debug = 1;
-//		String result ="";
-//		String numProblem = "1"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
-//		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
+		int gene_number = 0;
+		String target="Hello_world!";
+		String result ="";
+		//Como se van a generar individuos con un numero de genes igual a la longitud
+		//de la palabra objetivo, su posibilidad de mutación será su inversa...
+		float mutationrate= 1.0f/(float)target.length();
 		
 		
 		//PARAMETROS PROBLEMA ONEMAX
@@ -238,125 +236,39 @@ public class Cliente {
 //		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
 		
 		//PARAMETROS PROBLEMA PPEAKS
-		int population= 512;
-	    int gene_number = 32;
-		int maxiter = 1;
-		int boolElit = 1;
-		int mutation = 1;
-		float mutationrate= 1.0f/(float)gene_number;
-		double crossProb = 0.6;
-		int debug = 1;
-		String result ="";
-		String numProblem = "3"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
-		String target = "";
-		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
+//		int population= 512;
+//	    int gene_number = 32;
+//		int maxiter = 1;
+//		int boolElit = 1;
+//		int mutation = 1;
+//		float mutationrate= 1.0f/(float)gene_number;
+//		double crossProb = 0.6;
+//		int debug = 1;
+//		String result ="";
+//		String numProblem = "3"; //1-->'Frase Objetivo', 2-->'OneMAX', 3-->'PPeaks'
+//		String target = "";
+//		int endCriterial = 0; //0-->'Por iteraciones', 1-->'Por convergencia'
 		
 		
 		
-		Coordinador coord = new Coordinador();
-	
-		BufferedReader dataIn = new BufferedReader(new InputStreamReader(System.in));
+		Coordinador coord = new Coordinador(userName);
 		
-		System.out.println("*****MENU PRINCIPAL*****");
-		
-		/*System.out.print("Introduzca el tamaño de la poblacion: ");
-		try {
-			population=Integer.parseInt(dataIn.readLine());
-		}catch (IOException e){
-		System.err.println("Error fetching the population!");	
-		}
-		
-		System.out.print("Introduzca el numero maximo de iteraciones: ");
-		try {
-			maxiter=Integer.parseInt(dataIn.readLine());
-		}catch (IOException e){
-		System.err.println("Error fetching the iterations!");	
-		}
-		
-		System.out.print("Desea elitismo en la descendencia?: ");
-		try {
-			boolElit = Integer.parseInt(dataIn.readLine());
-		}catch (IOException e){
-		System.err.println("Error fetching the elitism rate!");	
-		}
-		
-		System.out.print("Desea introducir mutacion en la descendencia?: ");
-		try {
-			mutation=Integer.parseInt(dataIn.readLine());
-		}catch (IOException e){
-		System.err.println("Error fetching the mutation boolean!");	
-		}*/
-		
-		/*
-		if (mutation==1)
-		{
-			System.out.print("Que grado de mutacion desea introducir?: ");
-			try {
-				mutationRate=Float.parseFloat(dataIn.readLine());
-			}catch (IOException e){
-			System.err.println("Error fetching the mutation rate!");	
-			}
-		}
-		*/
-		
-		/*System.out.print("Introduzca la probabilidad de cruce: ");
-		try {
-			crossProb=dataIn.readLine();
-		}catch (IOException e){
-		System.err.println("Error fetching the cross probability!");	
-		}*/
-		
-		
-		/*System.out.print("Introduzca la frase objetivo a conseguir: ");
-		try {
-			target=dataIn.readLine();
-		}catch (IOException e){
-		System.err.println("Error fetching the target phrase!");	
-		}*/
-		
-		/*System.out.print("¿Desea activar la opcion de debug?: ");
-		try {
-			debug=dataIn.readLine();
-		}catch (IOException e){
-		System.err.println("Error fetching the debug option!");	
-		}*/
-		
-		/**PASO 1.- Generamos la poblacion inicial y los ficheros de configuracion 
+		/**
+		 * PASO 1.- Generamos la poblacion inicial y los ficheros de configuracion 
 		 * para los nodos Worker... 
 		 */
 		generatePopulationFile(target,population,gene_number,Integer.parseInt(numProblem));
 		generateMapperConfigurationFile(target, population, boolElit, debug,gene_number);
-		generateReducerConfigurationFile(population, maxiter,boolElit,mutationrate,mutation,crossProb,target); 
+		generateReducerConfigurationFile(population, maxIter,boolElit,mutationrate,mutation,crossProb,target); 
 		
-		
-		/*Process theProcess = null;
-		BufferedReader inStream = null;
-		System.out.println("llamando a la clase Coordinador");
-		
-		try{
-			theProcess = Runtime.getRuntime().exec("java Coordinador");
-		}
-		catch (IOException e)
-		{
-			System.err.println("Error en exec() method");
-			e.printStackTrace();
-		}
-		
-		try{
-			inStream = new BufferedReader(new InputStreamReader(theProcess.getInputStream()));
-			System.out.println(inStream.readLine());
-		}
-		catch (IOException e)
-		{
-			System.err.println("Error on inStream.readLine()");
-			e.printStackTrace();
-		}*/
-		
-		//PASO 2.- El coordinador realizara las iteraciones pertinentes y devolvera el resultado buscado...
+
+		/**
+		 * PASO 2.- El coordinador realizara las iteraciones pertinentes y devolvera el resultado buscado...
+		 */
 		System.out.println("CLIENTE: Lanzando trabajo...");
         final long startTime = System.currentTimeMillis();
 		try {
-			result = coord.readFromClientAndIterate(population, maxiter, debug, boolElit, numProblem, endCriterial,gene_number);
+			result = coord.readFromClientAndIterate(population, maxIter, debug, boolElit, numProblem, endCriterial,gene_number);
 		} catch (IOException e) {
 			System.err.println("CLIENTE: Se ha producido un error de I/O en la conexion al HDFS");
 		}catch (Exception e) {
@@ -368,6 +280,29 @@ public class Cliente {
 	    System.out.println("CLIENTE: Trabajo finalizado en " + duration + " segundos");
 		System.out.println("****FIN DE EJECUCION****");
 		
+	}
+
+	@Override
+	public int run(String[] args) throws Exception {
+		if (args.length != 8) {
+			System.err.println("Usage: mrpga <numProblem> <nIterations> <sizePop> <crossProb> <boolElit> <mutation> <debug> <endCriterial>");
+			ToolRunner.printGenericCommandUsage(System.err);
+			return -1;
+		}
+		String numProblem = args[0];
+		int	numIterations = Integer.parseInt(args[1]);
+		int sizePop = Integer.parseInt(args[2]);
+		double crossProb = Double.parseDouble(args[3]);
+		int boolElit = Integer.parseInt(args[4]);
+		int mutation = Integer.parseInt(args[5]);
+		int debug = Integer.parseInt(args[6]);
+		int endCriterial = Integer.parseInt(args[7]);
+		launch(numProblem, numIterations, sizePop, crossProb, boolElit, mutation, debug, endCriterial);
+		return 0;
+	}
+	
+	public static void main(String[] argv) throws Exception {
+		int res = ToolRunner.run(new Configuration(), new Cliente(), argv);
 	}
 
 }
