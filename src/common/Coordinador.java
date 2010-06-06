@@ -1,8 +1,6 @@
 package common;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Enumeration;
@@ -14,11 +12,9 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.pig.PigServer;
+import org.apache.pig.*;
 import org.apache.pig.backend.executionengine.ExecException;
-import org.apache.pig.impl.PigContext;
 
 
 public class Coordinador implements ICoordinador {
@@ -40,24 +36,16 @@ public class Coordinador implements ICoordinador {
 	Hashtable<String, Integer> hTable;
 	
 	//Inicializo las variables en el constructor...
-	Coordinador() {
-		localPopulationFile=new Path("./population.txt");
-		USERNAME = this.getUserName();
-		hdfsPopString = "/user/"+USERNAME+"/input/population.txt";
+	Coordinador(String userName) {
+		localPopulationFile=new Path("./population.dat");
+		USERNAME = userName;
+		hdfsPopString = "/user/"+USERNAME+"/input/population.dat";
 		hdfsPopulationPath=new Path(hdfsPopString);
 		subOptString = "/user/"+USERNAME+"/output/part-r-00000";
 		subOptimalResultsFilePath= new Path(subOptString);
 		hTable = new Hashtable();
 	}
-	
-	private String getUserName() {
-		Configuration conf = new Configuration();
-		String users = conf.get("hadoop.job.ugi");
-		String[] commas = users.split(",");
-		String userName = commas[0];
-		return userName;
-	}
-	
+		
 	private void regenDirs(FileSystem fs) throws IOException {
 		Path outputPath = new Path("output");
 		Path inputPath = new Path("input");
@@ -118,11 +106,13 @@ public class Coordinador implements ICoordinador {
 	
 	
 	
+	@SuppressWarnings("static-access")
 	@Override
 	public String readFromClientAndIterate(int numPop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number) throws IOException, ExecException, Exception {
 		
 		String bestIndividual="";
 		String []args = new String[2];
+		String []args2 = new String[2];
 		Configuration conf = new Configuration();
 		FileSystem fs = FileSystem.get(conf);
 		JobContext jCont = new JobContext(conf, null);	
@@ -147,7 +137,7 @@ public class Coordinador implements ICoordinador {
 			 * descendientes. Si no es la primera iteracion tendra que ejecutar el codigo Pig para
 		     * saber cual es la poblacion optima de la iteracion, almacenandola ya en el master... 
 			 */
-			String currPopString = "/user/"+USERNAME+"/input/population_"+i+".txt";
+			String currPopString = "/user/"+USERNAME+"/input/population_"+i+".dat";
 			Path currentPopulationFilePath = new Path (currPopString);
 			
 			//Si es la primera iteracion, leemos el fichero localmente...
@@ -195,8 +185,30 @@ public class Coordinador implements ICoordinador {
 				else 
 					System.out.println("COORDINADOR["+i+"][PPEAKS]: EN LA ITERACION "+i+" NO ENCUENTRO EL INDIVIDUO OBJETIVO");
 			
-			System.out.println("COORDINADOR["+i+"]: Llamo al script de Pig");		
-			this.runPigScript(subOptimalResultsFilePath.toString(),i,conf);
+			System.out.println("COORDINADOR["+i+"]: Llamo al script de Pig");
+			PigFunction pigFun = new PigFunction();
+			args2[0] = subOptimalResultsFilePath.toString();
+			args2[1] = i+"";
+//			String s=null;
+//			Process p = Runtime.getRuntime().exec("javac PigFunction.java");
+//			BufferedReader stdInput = new BufferedReader(new 
+//             InputStreamReader(p.getInputStream()));
+//	        BufferedReader stdError = new BufferedReader(new 
+//	             InputStreamReader(p.getErrorStream()));
+//	
+//	        // read the output from the command
+//	        System.out.println("Here is the standard output of the command:\n");
+//	        while ((s = stdInput.readLine()) != null) {
+//	            System.out.println(s);
+//	        }
+//	        
+//	     // read any errors from the attempted command
+//            System.out.println("Here is the standard error of the command (if any):\n");
+//            while ((s = stdError.readLine()) != null) {
+//                System.out.println(s);
+//            }
+			pigFun.main(args2);
+			//this.runPigScript(subOptimalResultsFilePath.toString(),i,conf);
 			System.out.println("COORDINADOR["+i+"]: Acaba el script de Pig");
 			
 			//Si el parámetro "debug" está activado, vamos a crear un directorio nuevo en el que se van a ir colocando
@@ -204,11 +216,11 @@ public class Coordinador implements ICoordinador {
 			if (debug==1) 
 			{
 				fs.mkdirs(oldPopulationsDirPath);
-				String targetString = "/user/"+USERNAME+"/oldPopulations/population_"+i+".txt"; 
+				String targetString = "/user/"+USERNAME+"/oldPopulations/population_"+i+".dat"; 
 				Path targetFilePopPath = new Path (targetString);
 				if (i==0) {
 					//Movemos la poblacion inicial y la que obtiene Pig
-					String initString = "/user/"+USERNAME+"/oldPopulations/population.txt"; 
+					String initString = "/user/"+USERNAME+"/oldPopulations/population.dat"; 
 					Path initialFilePopPath =  new Path(initString);
 					fs.rename(hdfsPopulationPath, initialFilePopPath);
 					//Necesitamos una copia de la última población descendiente que sirva de entrada para la siguiente iteracion
@@ -217,7 +229,7 @@ public class Coordinador implements ICoordinador {
 					
 				else {
 					//Borramos el fichero de poblacion de la descendencia anterior...
-					String prevPopString = "/user/"+USERNAME+"/input/population_"+(i-1)+".txt"; 
+					String prevPopString = "/user/"+USERNAME+"/input/population_"+(i-1)+".dat"; 
 					fs.delete(new Path(prevPopString), true);
 					//Copiamos el fichero como entrada de la siguiente iteracion...
 					FileUtil.copy(fs, currentPopulationFilePath, fs, targetFilePopPath, false, conf);
@@ -260,8 +272,7 @@ public class Coordinador implements ICoordinador {
 	    	System.exit(1);
 	    }
 		
-	    String popIterationName = "input/population_"+iteration+".txt";
-		
+	    String popIterationName = "input/population_"+iteration+".dat";
 		PigServer pigServer = new PigServer("mapreduce");
 		
 		//PigContext pigContext = pigServer.getPigContext();
@@ -306,7 +317,7 @@ public class Coordinador implements ICoordinador {
 	@Override
 	public void uploadToHDFS(JobContext cont, String population) throws IOException {
 		//Indicamos a que directorio del HDFS lo queremos subir...  
-		final String HDFS_POPULATION_FILE= "/user/"+USERNAME+"/input/population.txt";
+		final String HDFS_POPULATION_FILE= "/user/"+USERNAME+"/input/population.dat";
 		
 		//Hacemos lo mismo con los ficheros de configuracion para los nodos worker...
 		final String LOCAL_MAPPER_CONFIGURATION_FILE="./mapper_configuration.dat";

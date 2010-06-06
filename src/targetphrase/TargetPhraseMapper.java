@@ -39,7 +39,7 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	private static final Log LOG = LogFactory.getLog(TargetPhraseMapper.class.getName());
 	
 	
-	private IntWritable calculateFitness(String target, Text individual) {		
+	private IntWritable calculateFitness(String target, Text individual) {
 		int targetSize=target.length();
 		String textAsString = individual.toString();
 		int fitness=0;
@@ -51,7 +51,7 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	
 	@Override
 	protected void setup(Context cont)throws IOException {
-		//LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
+		LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
 		Configuration conf = cont.getConfiguration();
 		FileSystem hdfs = FileSystem.get(conf);
 		String users = conf.get("hadoop.job.ugi");
@@ -119,7 +119,7 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, int bestFitness) throws IOException {
 		String bestDir = "/user/"+USERNAME+"/bestIndividuals";
-		String bestFile = bestDir+"/bestIndiv.txt";
+		String bestFile = bestDir+"/bestIndiv.dat";
 		Path bestDirPath = new Path(bestDir);
 		Path bestIndivPath = new Path(bestFile);
 		FileSystem hdfs = FileSystem.get(new Configuration());
