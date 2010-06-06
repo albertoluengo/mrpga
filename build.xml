@@ -1,0 +1,36 @@
+<project>
+	<target name="clean">
+		<delete file="mrpga.jar"/>
+		<delete dir="build/" />
+		<delete dir="bin/" />
+	</target>
+
+	<property name="lib.hadoop.dir" value="G:/hadoop-0.20.1/" />
+	<property name="lib.pig.dir" value="C:/PigPen20/" />
+
+	<path id="classpath">
+		<fileset dir="${lib.hadoop.dir}" includes="**/*.jar"/>
+		<fileset dir="${lib.pig.dir}" includes="**/*.jar"/>
+	</path>
+
+	<target name="compile">
+		<mkdir dir="build/classes"/>
+		<javac srcdir="src" destdir="build/classes" classpathref="classpath" encoding="utf-8"/>
+	</target>
+	
+	<target name="javadoc">
+	      <javadoc sourcepath="." destfile="../javadoc" packagenames="*"/>
+    </target>
+
+	<target name="jar" description="Make MRPGA jar.">
+		<jar destfile="mrpga.jar" basedir="build/classes">
+			<manifest>
+				<attribute name="Main-Class" value="common.Cliente"/>
+			</manifest>
+		</jar>
+	</target>
+	
+	<target name="all" depends="clean, compile, jar">
+    </target>
+
+</project>

@@ -118,7 +118,7 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		FSDataInputStream dis = hdfs.open(path);
 		BufferedReader br = new BufferedReader(new InputStreamReader(dis));
 		String strLine;
-		String[]keys = {"targetPhrase","numPopulation","debugging","elitism","gene_length"};
+		String[]keys = {"targetPhrase","numPopulation","elitism","debugging","gene_length"};
 		int index=0;
 		 while ((strLine = br.readLine()) != null)   {
 			mapParameters.put(keys[index], strLine);
@@ -139,7 +139,6 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
     			else	
     				peak[peaks][i] = 0;
     	}
-    	LOG.info("CREO LOS PICOS");
 	}
 	
 	@Override
@@ -156,8 +155,8 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		while(itr.hasMoreTokens()) {
 			subjectAsWord.set(itr.nextToken());
 			DoubleWritable elemFitness = calculateFitness(subjectAsWord.toString());
-			LOG.info("MAPPER: EL INDIVIDUO ES "+subjectAsWord.toString());
-			LOG.info("MAPPER: EL FITNESS DEL INDIVIDUO ES "+elemFitness);
+//			LOG.info("MAPPER: EL INDIVIDUO ES "+subjectAsWord.toString());
+//			LOG.info("MAPPER: EL FITNESS DEL INDIVIDUO ES "+elemFitness);
 			//Seguimos la pista del mejor elemento...
 			if (elemFitness.get() > bestFitness) {
 				bestFitness = elemFitness.get();
@@ -177,7 +176,7 @@ public class PPEAKSMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, double bestFitness) throws IOException {
 		String bestDir = "/user/"+USERNAME+"/bestIndividuals";
-		String bestFile = bestDir+"/bestIndiv.txt";
+		String bestFile = bestDir+"/bestIndiv.dat";
 		Path bestDirPath = new Path(bestDir);
 		Path bestIndivPath = new Path(bestFile);
 		FileSystem hdfs = FileSystem.get(new Configuration());

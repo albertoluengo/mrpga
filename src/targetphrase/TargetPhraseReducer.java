@@ -1,16 +1,8 @@
 package targetphrase;
 
 import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.sql.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Random;
@@ -19,16 +11,12 @@ import java.util.Vector;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.util.LineReader;
 
 
 
@@ -74,16 +62,14 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 	
 	@Override
 	protected void setup(Context cont) throws IOException{
-		//LOG.info("***********DENTRO DEL SETUP DEL REDUCER**********");
+		LOG.info("***********DENTRO DEL SETUP DEL REDUCER**********");
 		FileSystem hdfs = FileSystem.get(new Configuration()); 
 		Configuration conf = cont.getConfiguration();
 		String users = conf.get("hadoop.job.ugi");
 		String[] commas = users.split(",");
 		USERNAME = commas[0];
 		String HDFS_REDUCER_CONFIGURATION_FILE="/user/"+USERNAME+"/data/reducer_configuration.dat";
-		String BEST_INDIVIDUAL_FILE="/user/"+USERNAME+"/bestIndividuals/bestIndiv.dat";
 		Path path = new Path(HDFS_REDUCER_CONFIGURATION_FILE);
-		Path bestIndPath = new Path(BEST_INDIVIDUAL_FILE);
 		
 		
 		
@@ -100,25 +86,18 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 			throw new IOException("ALGUNO DE LOS FICHEROS ESPECIFICADOS NO ES VALIDO");
 		}
 		
+		tournIndiv = new String[tournamentSize];
+		tournamentArray = new String[tournamentSize][tournamentSize];
 		
 		FSDataInputStream dis = hdfs.open(path);
-		FSDataInputStream dis2 = hdfs.open(bestIndPath);
 		BufferedReader br = new BufferedReader(new InputStreamReader(dis));
-		BufferedReader br2 = new BufferedReader(new InputStreamReader(dis2));
 		String strLine;
 		String[]keys = {"numPopulation","maxIterations","boolElit","mutationRate","mutation","crossProb","targetPhrase"};
-		String[]bestIndKeys = {"bestIndiv","bestFitness"};
 		int index = 0;
-		int index2=0;
 		while ((strLine = br.readLine()) != null)   {
 			parameters.put(keys[index], strLine);
 		    index++;
 		  }
-		while ((strLine = br2.readLine()) != null)   {
-			bestIndivTable.put(bestIndKeys[index2], strLine);
-		    index2++;
-		  }
-		
 		dis.close();
 		numPop = Integer.parseInt((String)parameters.get("numPopulation"));
 		boolElit = Integer.parseInt((String)parameters.get("boolElit"));
@@ -127,24 +106,30 @@ public class TargetPhraseReducer extends Reducer<Text,IntWritable,Text,IntWritab
 		crossProb = Double.parseDouble((String)parameters.get("crossProb"));
 		targetPhrase = (String)parameters.get("targetPhrase");
 		
-		//tournIndiv = new String[targetPhrase.length()];
-		tournIndiv = new String[tournamentSize];
-		//tournamentArray = new String[2*tournamentSize][targetPhrase.length()];
-		tournamentArray = new String[tournamentSize][tournamentSize];
-		
-		
 		/**Si esta activada la opcion del elitismo, 
 		 * escribimos el mejor elemento en la salida...
 		 */
 		if (boolElit == 1) {
+			String BEST_INDIVIDUAL_FILE="/user/"+USERNAME+"/bestIndividuals/bestIndiv.dat";
+			Path bestIndPath = new Path(BEST_INDIVIDUAL_FILE);
+			
+			int index2=0;
+			FSDataInputStream dis2 = hdfs.open(bestIndPath);
+			BufferedReader br2 = new BufferedReader(new InputStreamReader(dis2));
+			String[]bestIndKeys = {"bestIndiv","bestFitness"};
+			while ((strLine = br2.readLine()) != null)   {
+				bestIndivTable.put(bestIndKeys[index2], strLine);
+			    index2++;
+			  }
+			dis2.close();
+
 			bestInd = new Text((String)bestIndivTable.get("bestIndiv"));
 			bestIndFitness = Integer.parseInt((String)bestIndivTable.get("bestFitness"));
 			try {
 				cont.write(bestInd, new IntWritable(bestIndFitness));
 			} catch (InterruptedException e) {
 				e.printStackTrace();
-			}
-			
+			}	
 		}
 	}
 	
