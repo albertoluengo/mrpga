@@ -19,8 +19,8 @@ import org.apache.hadoop.mapreduce.Mapper;
 
 /**
  * Clase que implementa todas las funciones necesarias de un nodo <code>Mapper</code> 
- * en un trabajo <code>MapReduce</code>: se encargará de evaluar el "fitness" de cada individuo,
- * así como de generar los distintos pares <clave, fitness> necesarios para que los
+ * en un trabajo <code>MapReduce</code>: se encargar&#225; de evaluar el "fitness" de cada individuo,
+ * as&#237; como de generar los distintos pares (clave, fitness) necesarios para que los
  * nodos <code>Reducer</code> los puedan procesar. 
  * @author Alberto Luengo Cabanillas
  */
@@ -33,11 +33,11 @@ public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	private Hashtable mapParameters = new Hashtable();
 	
 	/**
-	 * Método que calcula el "fitness" de cada individuo. En el caso del problema
-	 * <code>OneMAX</code> consistirá en incrementarlo en el caso de que el gen
+	 * M&#233;todo que calcula el "fitness" de cada individuo. En el caso del problema
+	 * <code>OneMAX</code> consistir&#225; en incrementarlo en el caso de que el gen
 	 * del individuo sea "1".
 	 * @param individual Individuo a procesar
-	 * @return Valor numérico con precisión <code>double</code> que representa el fitness del individuo.
+	 * @return Valor num&#233;rico con precisi&#243;n <code>double</code> que representa el fitness del individuo.
 	 */
 	private DoubleWritable calculateFitness(String individual) {		
 		double fitness = 0.0;
@@ -48,7 +48,13 @@ public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		return new DoubleWritable(fitness);
 	}
 	
-	
+	/**
+	 * M&#233;todo <code>override</code> que se ejecutar&#225; una &#250;nica vez en el sistema
+	 * que servir&#225; para leer y parsear los par&#225;metros de configuraci&#243;n necesarios
+	 * para los nodos <code>Mapper</code>.
+	 * @param cont Contexto en el que se ejecuta el trabajo <code>MapReduce</code>.
+	 * @throws IOException Excepci&#243;n que se lanza si ha habido alg&#250;n error manipulando ficheros o directorios.
+	 */
 	@Override
 	protected void setup(Context cont)throws IOException {
 		//LOG.info("***********DENTRO DEL SETUP DEL MAPPER**********");
@@ -83,6 +89,16 @@ public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 		 
 	}
 	
+	/**
+	 * M&#233;todo <code>override</code> que "mapea" los distintos individuos
+	 * para generar una lista de pares (clave,valor) que leer&#225;n posteriormente
+	 * los nodos <code>Reducer</code>
+	 * @param key La clave del par (clave,valor) que genera este m&#233;todo.
+	 * @param value Objeto que representa al individuo de una poblaci&#243;n.
+	 * @param context Contexto en el que se ejecuta el trabajo <code>MapReduce</code>.
+	 * @throws IOException Excepci&#243;n que se lanza si ha habido alg&#250;n error manipulando ficheros o directorios.
+	 * @throws InterruptedException Excepción propia de <code>Hadoop</code> que se lanza si se interrumpe alguna transacci&#243;n at&#243;mica.
+	 */
 	@Override
 	protected void map(Object key, Text value, Context context) throws IOException, InterruptedException 
 	{
@@ -113,12 +129,13 @@ public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	}
 	
 	/**
-	 * Método que, una vez todos los elementos hayan sido procesados, 
+	 * M&#233;todo que, una vez todos los elementos hayan sido procesados, 
 	 * escribe en un fichero global el mejor de ellos (si se ha elegido
 	 * introducir elitismo).
-	 * @param debug Número entero (1-->"Sí", 0-->"No") que indica si interesa guardar un histórico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
-	 * @param bestIndiv Texto que representa al mejor individuo encontrado en una población por un <code>Mapper</code>, según los criterios del problema concreto.
-	 * @param bestFitness Número que representa al mejor fitness encontrado en una población por un <code>Mapper</code>, según los criterios del problema concreto.
+	 * @param debug N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si interesa guardar un hist&#243;rico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
+	 * @param bestIndiv Texto que representa al mejor individuo encontrado en una poblaci&#243;n por un <code>Mapper</code>, seg&#250;n los criterios del problema concreto.
+	 * @param bestFitness N&#250;mero que representa al mejor fitness encontrado en una poblaci&#243;n por un <code>Mapper</code>, seg&#250;n los criterios del problema concreto.
+	 * @throws IOException Excepci&#243;n que se lanza si ha habido alg&#250;n error manipulando ficheros o directorios.
 	 */
 	public void closeAndWrite(int debug,Text bestIndiv, double bestFitness) throws IOException {
 		String bestDir = "/user/"+USERNAME+"/bestIndividuals";
