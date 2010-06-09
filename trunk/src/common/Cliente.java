@@ -16,7 +16,7 @@ import org.apache.hadoop.util.ToolRunner;
 
 /**
  * Punto de entrada del sistema, a trav&#233;s del cual se introducir&#225;n los distintos
- * par&#225;metros configurables del mismo, tales como n&#250;mero de iteraciones, tama&#209;o
+ * par&#225;metros configurables del mismo, tales como n&#250;mero de iteraciones, tama&#241;o
  * de poblaci&#243;n, etc.
  * @author Alberto Luengo Cabanillas
  */
@@ -125,10 +125,9 @@ public class Cliente extends Configured implements Tool {
 		} catch (IOException e){e.printStackTrace();}
 	}
 	
-	//
 	/**
 	 *M&#233;todo que crea el fichero de configuracion que debe subir el coordinador al 
-	 *HDFS para que el nodo <code>MRPGAMaster</code> lo distribuya entre los nodos trabajadores... 
+	 *HDFS para que los nodos Mapper puedan acceder a los parámetros de configuración que necesiten. 
 	 */
 	private static void generateMapperConfigurationFile(String target, int numPop, int boolElit, int debug,int gene_length) {
 		
@@ -170,8 +169,8 @@ public class Cliente extends Configured implements Tool {
 	}
 	
 	/**
-	 *Creamos el fichero de configuracion que debe subir el coordinador al HDFS 
-	 *para que el Master lo distribuya entre los nodos trabajadores... 
+	 *M&#233;todo que crea el fichero de configuracion que debe subir el coordinador para que
+	 *los nodos Reducer puedan acceder a los parámetros de configuración que necesiten. 
 	 */
 	private static void generateReducerConfigurationFile(int numpop, int maxiter, int boolElit,
 			float mutationrate, int mutation, double crossProb, String target) {
@@ -214,8 +213,8 @@ public class Cliente extends Configured implements Tool {
 	}
 	
 	/**
-	 * M&#233;todo que inicia el sistema <code>MRPGA</code>, cogiendo la configuraci&#243;n necesaria del HDFS subyacente
-	 * (par&#225;metros, sistemas de ficheros,etc)
+	 * M&#233;todo que inicia el sistema <code>MRPGA</code>, obteniendo la configuraci&#243;n necesaria del HDFS subyacente
+	 * (par&#225;metros, sistemas de ficheros,etc).
 	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
 	 * @param maxIter N&#250;mero m&#225;ximo de iteraciones por las que va a atravesar el sistema.
 	 * @param population Tama&#209;o (entero) de la poblaci&#243;n a procesar.
@@ -280,7 +279,7 @@ public class Cliente extends Configured implements Tool {
 
 	/**
 	 * M&#233;todo de la clase <code>ToolRunner</code> que parsea los par&#225;metros 
-	 * introducidos por consola y ejecuta el m&#233;todo <code>launch</code> y accede 
+	 * introducidos por consola, ejecuta el m&#233;todo <code>launch</code> y accede 
 	 * a la configuraci&#243;n (clase <code>Configuration</code>) del HDFS subyacente.
 	 * @param args Array de par&#225;metros introducidos por consola.
 	 * @return C&#243;digo de salida (0-->"Ejecuci&#243;n correcta", -1-->"Error").

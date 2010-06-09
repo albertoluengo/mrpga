@@ -3,7 +3,6 @@ package ppeaks;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Random;
@@ -16,16 +15,13 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.Reducer.Context;
 
-import targetphrase.TargetPhraseReducer;
 
 /**
  * Clase que representa un nodo <code>Reducer</code> dentro del framework 
- * de ejecución <code>MapReduce</code>, implementando todas las funciones
+ * de ejecuci&#243;n <code>MapReduce</code>, implementando todas las funciones
  * necesarias para ello (<code>reduce()</code>, <code>setup()</code>, etc).
  * @author Alberto Luengo Cabanillas
  */
@@ -56,13 +52,20 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	private int indWinner = 0;
 
 	/**
-	 * Método constructor de la clase <code>PPEAKSReducer</code>
-	 * que inicializa una nueva semilla para la generación de números aleatorios.
+	 * M&#233;todo constructor de la clase <code>PPEAKSReducer</code>
+	 * que inicializa una nueva semilla para la generaci&#243;n de números aleatorios.
 	 */
 	PPEAKSReducer() {
 		r = new Random(System.nanoTime());
 	}
 	
+	/**
+	 * M&#233;todo <code>override</code> que se ejecutar&#225; una &#250;nica vez en el sistema
+	 * que servir&#225; para leer y parsear los par&#225;metros de configuraci&#243;n necesarios
+	 * para los nodos <code>Reducer</code>.
+	 * @param cont Contexto en el que se ejecuta el trabajo <code>MapReduce</code>.
+	 * @throws IOException Excepci&#243;n que se lanza si ha habido alg&#250;n error manipulando ficheros o directorios.
+	 */
 	@Override
 	protected void setup(Context cont) throws IOException{
 		//LOG.info("***********DENTRO DEL SETUP DEL REDUCER**********");
@@ -133,7 +136,16 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 		}
 	}
 	
-	
+	/**
+	 * M&#233;todo <code>override</code> que recibe los distintos pares (clave,valor) 
+	 * de alg&#250;n nodo <code>Mapper</code> y los procesa de acuerdo a una serie de reglas, devolviendo una lista de
+	 * pares (clave,valor) al contexto.
+	 * @param key La clave del par (clave,valor) que genera este m&#233;todo.
+	 * @param values El conjunto de todos los valores fitness de los individuos..
+	 * @param context Contexto en el que se ejecuta el trabajo <code>MapReduce</code>.
+	 * @throws IOException Excepci&#243;n que se lanza si ha habido alg&#250;n error manipulando ficheros o directorios.
+	 * @throws InterruptedException Excepción propia de <code>Hadoop</code> que se lanza si se interrumpe alguna transacci&#243;n at&#243;mica.
+	 */
 	@Override
 	protected void reduce(Text key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException 
 	{
@@ -232,14 +244,14 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	}
 	
 	/**
-	 * Método que ejecuta el último torneo de individuos cuando todos los usuarios
+	 * M&#233;todo que ejecuta el último torneo de individuos cuando todos los usuarios
 	 * han sido procesados. Esto se debe a la ventana activa de <code>tournamentSize</code>
 	 * elementos con los que se trabaja
-	 * @param context Instancia de la clase <code>Context</code> que facilita información acerca
-	 * del trabajo <code>MapReduce</code> que se está ejecutando. 
-	 * @throws IOException Excepción lanzada al haber algún problema manipulando
+	 * @param context Instancia de la clase <code>Context</code> que facilita informaci&#243;n acerca
+	 * del trabajo <code>MapReduce</code> que se est&#225;	 ejecutando. 
+	 * @throws IOException Excepci&#243;n lanzada al haber algún problema manipulando
 	 * ficheros o directorios.
-	 * @throws InterruptedException Excepción propia del API de Hadoop que se lanza si hay algún
+	 * @throws InterruptedException Excepci&#243;n propia del API de Hadoop que se lanza si hay algún
 	 * problema escribiendo los individuos procesados.
 	 */
 	public void closeAndWrite(Context context) throws IOException, InterruptedException {
@@ -261,14 +273,14 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	}
 	
 	/**
-	 * Método que se encarga de escribir los distintos resultados sub-óptimos en
-	 * el fichero de salida correspondiente, tras haber realizado una selección
+	 * M&#233;todo que se encarga de escribir los distintos resultados sub-&#243;ptimos en
+	 * el fichero de salida correspondiente, tras haber realizado una selecci&#243;n
 	 * de los mejores individuos por medio de un torneo, cruzarlos y, si se ha
 	 * indicado, mutarlos.
-	 * @param numElemProcessed Número de individuos procesados de una población.
-	 * @param tournArray Conjunto de individuos que participarán en el torneo.
-	 * @param context Instancia de la clase <code>Context</code> que facilita información acerca
-	 * del trabajo <code>MapReduce</code> que se está ejecutando.
+	 * @param numElemProcessed Número de individuos procesados de una poblaci&#243;n.
+	 * @param tournArray Conjunto de individuos que participar&#225;	n en el torneo.
+	 * @param context Instancia de la clase <code>Context</code> que facilita informaci&#243;n acerca
+	 * del trabajo <code>MapReduce</code> que se est&#225;	 ejecutando.
 	 */
 	private void selectionAndCrossover(int numElemProcessed, String[][]tournArray,Context context){
 		String[] tournWinner = this.tournSelection(tournArray);
@@ -329,8 +341,8 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	}
 	
 	/**
-	 * Método que implementa el metodo de seleccion por torneo sin reemplazamiento
-	 * entre los distintos individuos de una población, devolviendo los ganadores
+	 * M&#233;todo que implementa el metodo de seleccion por torneo sin reemplazamiento
+	 * entre los distintos individuos de una poblaci&#243;n, devolviendo los ganadores
 	 * del mismo.
 	 * @param tournArray Conjunto de individuos (contendientes) sobre los que realizar el torneo.
 	 * @return Conjunto de individuos ganadores del torneo.
@@ -367,7 +379,7 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	
 	
 	/**
-	 * Método que realiza la operación de cruce sobre dos grupos de individuos.
+	 * M&#233;todo que realiza la operaci&#243;n de cruce sobre dos grupos de individuos.
 	 * @return Los grupos de individuos cruzados aleatoriamente.
 	 */
 	private String[][] crossOver() {
@@ -417,8 +429,8 @@ public class PPEAKSReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	
 	
 	/**
-	 * Método que implementa la operación de mutación sobre un individuo concreto,
-	 * en función de una probabilidad.
+	 * M&#233;todo que implementa la operaci&#243;n de mutaci&#243;n sobre un individuo concreto,
+	 * en funci&#243;n de una probabilidad.
 	 * @param Individuo a mutar.
 	 * @return Individuo mutado.
 	 */

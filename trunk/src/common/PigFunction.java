@@ -8,23 +8,23 @@ import org.apache.hadoop.fs.Path;
 import org.apache.pig.PigServer;
 
 /**
- * Clase que ejecuta código <code>Pig Latin<code> embebido en Java, 
- * que se encarga de recopilar los distintos individuos sub-óptimos que 
- * generan los "reduce" locales (que estaran almacenados
- * en un formato de documento de texto) y aplica sobre ellos las operaciones 
- * que se necesiten. Además, generará un nuevo fichero de población para que
- * comience una nueva iteración en el sistema.
+ * Clase que ejecuta c&#243;digo <code>Pig Latin</code> embebido en Java, 
+ * que se encarga de recopilar los distintos individuos sub-&#243;ptimos que 
+ * generan los nodos <code>Reduce</code> (almacenados
+ * en un fichero de texto) y aplica sobre ellos las operaciones 
+ * que se necesiten. Adem&#225;s, generar&#225; un nuevo fichero de poblaci&#243;n para que
+ * comience una nueva iteraci&#243;n en el sistema.
  * @author Alberto Luengo Cabanillas
  *
  */
 public class PigFunction {
 
 	/**
-	 * Método principal de la clase <code>PigFunction</code> que se encarga
-	 * de procesar los ficheros de población resultantes de los nodos 
+	 * M&#233;todo principal de la clase <code>PigFunction</code> que se encarga
+	 * de procesar los ficheros de poblaci&#243;n resultantes de los nodos 
 	 * <code>Reducer</code>.
 	 * @param args Array de comandos.
-	 * @throws IOException Excepción lanzada al haber algún problema manipulando
+	 * @throws IOException Excepci&#243;n lanzada al haber alg&#250;n problema manipulando
 	 * ficheros o directorios.
 	 */
 	public static void main(String[] args) throws IOException {

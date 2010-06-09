@@ -16,10 +16,9 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.pig.backend.executionengine.ExecException;
 
 /**
- * Clase que leer&#224; los datos de entrada del cliente y ejecutar&#224; las iteraciones 
+ * Clase que leer&#225; los datos de entrada del cliente y ejecutar&#225; las iteraciones 
  * recibidas hasta que encuentre un resultado apropiado o se agoten dichas iteraciones.
  * @author Alberto Luengo Cabanillas
- * @since 1.0
  *
  */
 public class Coordinador implements ICoordinador {
@@ -137,7 +136,7 @@ public class Coordinador implements ICoordinador {
 		
 		//Simulamos el criterio de fin de ejecución por consecución del objetivo con un numero de iteraciones muy elevado
 		if (endCriterial == 1) {
-			maxiter = 1000000;
+			maxiter = 100000000;
 		}
 			
 		for (int i=0; i<maxiter; i++) 

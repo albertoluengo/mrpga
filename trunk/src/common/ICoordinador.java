@@ -3,78 +3,75 @@ package common;
 import java.io.IOException;
 import java.util.Hashtable;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.pig.backend.executionengine.ExecException;
 
 
 /**
- * Interfaz que declara los métodos que ejecutará la clase <code>Coordinador.java</code>
+ * Interfaz que declara los m&#233;todos que ejecutar&#225; la clase <code>Coordinador.java</code>
  * @author Alberto Luengo Cabanillas
  */
 public interface ICoordinador {
 
 	/**
-	 * Método principal de la clase <code>Coordinador</code> que realizará las
-	 * iteraciones indicadas por la clase <code>Cliente</code> y lanzará
-	 * trabajos "MapReduce" sobre "Hadoop" y "Pig" para procesar las distintas
+	 * M&#233;todo principal de la clase <code>Coordinador</code> que realizar&#225; las
+	 * iteraciones indicadas por la clase <code>Cliente</code> y lanzar&#225;
+	 * trabajos <code>MapReduce</code> sobre <code>Hadoop</code> y <code>Pig</code> para procesar las distintas
 	 * poblaciones que se vayan generando, hasta obtener un resultado.
-	 * @param numpop Tamaño (entero) de la población a procesar.
-	 * @param maxiter Número máximo de iteraciones por las que va a atravesar el sistema.
-	 * @param debug Número entero (1-->"Sí", 0-->"No") que indica si interesa guardar un histórico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
-	 * @param boolElit Número entero (1-->"Sí", 0-->"No") que indica si se introduce elitismo o no en la generación de descendencia.
-	 * @param numProblem Número que indica el número de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
-	 * @param endCriterial Número entero (0-->"Por Iteraciones", 1-->"Por Objetivo") que indica la forma de terminación del algoritmo.
+	 * @param numpop Tama&#241;o (entero) de la poblaci&#243;n a procesar.
+	 * @param maxiter N&#250;mero m&#225;ximo de iteraciones por las que va a atravesar el sistema.
+	 * @param debug N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si interesa guardar un hist&#243;rico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
+	 * @param boolElit N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si se introduce elitismo o no en la generaci&#243;n de descendencia.
+	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
+	 * @param endCriterial N&#250;mero entero (0-->"Por Iteraciones", 1-->"Por Objetivo") que indica la forma de terminaci&#243;n del algoritmo.
 	 * @param gene_number Longitud de los individuos de las poblaciones a procesar (no aplicable al problema <code>TargetPhrase</code>).
 	 * @return Cadena de texto con el/los mejor(es) individuo(s) encontrado(s).
-	 * @throws IOException Excepción que se lanza al manipular ficheros o directorios.
-	 * @throws ExecException Excepción que lanza un script <code>Pig</code> si encuentra algún problema en su ejecución.
-	 * @throws Exception Excepción padre genérica de <code>Java</code>
+	 * @throws IOException Excepci&#243;n que se lanza al manipular ficheros o directorios.
+	 * @throws ExecException Excepci&#243;n que lanza un script <code>Pig</code> si encuentra alg&#250;n problema en su ejecuci&#243;n.
+	 * @throws Exception Excepci&#243;n padre gen&#233;rica de <code>Java</code>
 	 */
 	public String readFromClientAndIterate(int numpop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number)throws Exception;
 	
 	/**
-	 * Método que copia los ficheros de configuración y poblacionales generados 
+	 * M&#233;todo que copia los ficheros de configuraci&#243;n y poblacionales generados 
 	 * en la clase <code>Cliente.java</code> a los directorios especificados del
 	 * HDFS.
 	 * @param cont Instancia de <code>JobContext</code> que recoge 
 	 * el contexto del trabajo MapReduce a ejecutar.
-	 * @param population Ruta del sistema de ficheros anfitrión 
-	 * en el que se ha generado la población inicial.
-	 * @param boolElit Número entero (1-->"Sí", 0-->"No") que indica si se introduce elitismo o no en la generación de descendencia.
-	 * @throws IOException Excepción que se lanza al manipular ficheros o directorios.
+	 * @param population Ruta del sistema de ficheros anfitri&#243;n 
+	 * en el que se ha generado la poblaci&#243;n inicial.
+	 * @param boolElit N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si se introduce elitismo o no en la generaci&#243;n de descendencia.
+	 * @throws IOException Excepci&#243;n que se lanza al manipular ficheros o directorios.
 	 */
 	public void uploadToHDFS(JobContext cont, String population, int boolElit) throws IOException;
 	
 	/**
-	 * Método que lee el fichero de población que existe en el HDFS y 
+	 * M&#233;todo que lee el fichero de poblaci&#243;n que existe en el HDFS y 
 	 * lo reemplaza por el de su descendencia antes de entrar en la 
-	 * siguiente iteración.
-	 * @param original Ruta a la población "padre" dentro del HDFS.
-	 * @param actual Ruta a la población "actual" dentro del HDFS.
-	 * @throws IOException Excepción lanzada si existe algún problema manipulando directorios o ficheros.
+	 * siguiente iteraci&#243;n.
+	 * @param original Ruta a la poblaci&#243;n "padre" dentro del HDFS.
+	 * @param actual Ruta a la poblaci&#243;n "actual" dentro del HDFS.
+	 * @throws IOException Excepci&#243;n lanzada si existe alg&#250;n problema manipulando directorios o ficheros.
 	 */
 	public void replacePopulationFile(Path original, Path actual) throws IOException;
 	
 	/**
-	 * Método que lee los registros de una tabla Hash y los procesa para buscar
-	 * los mejores individuos, según el criterio establecido por <code>numProblem</code>.
-	 * @param hashTable Tabla hash que contiene todos los pares "individuo-fitness" de la población actual.
-	 * @param numProblem Número que indica el número de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
+	 * M&#233;todo que lee los registros de una tabla Hash y los procesa para buscar
+	 * los mejores individuos, seg&#250;n el criterio establecido por <code>numProblem</code>.
+	 * @param hashTable Tabla hash que contiene todos los pares "individuo-fitness" de la poblaci&#243;n actual.
+	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
 	 * @return Cadena de texto con los mejores individuos encontrados.
 	 */
 	public String printBestIndividual(Hashtable hashTable, String numProblem);
 	
 	/**
-	 * Método que lee un fichero y lo procesa como una <code>HashTable</code> con el
+	 * M&#233;todo que lee un fichero y parsea su contenido como una <code>HashTable</code> con el
 	 * fin de facilitar su posterior procesamiento.
 	 * @param filePath Ruta en el HDFS del fichero a procesar.
-	 * @param numProblem Número que indica el número de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
-	 * @return Una tabla Hash con todos los elementos de la actual población en forma "individuo-fitness".
-	 * @throws IOException Excepción lanzada si existe algún problema manipulando directorios o ficheros.
+	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
+	 * @return Una tabla Hash con todos los elementos de la actual poblaci&#243;n en forma "individuo-fitness".
+	 * @throws IOException Excepci&#243;n lanzada si existe alg&#250;n problema manipulando directorios o ficheros.
 	 */
 	public Hashtable generateIndividualsTable(Path filePath, String numProblem)throws IOException;
 }

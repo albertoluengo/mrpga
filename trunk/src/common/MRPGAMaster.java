@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
@@ -18,8 +17,8 @@ import org.apache.hadoop.util.ToolRunner;
 
 /**
  * Clase que representa el nodo Master del sistema <code>MapReduce</code> 
- * implementado. Se encargará de lanzar el propio trabajo <code>MapReduce</code>,
- * indicando cuál será la clase <code>Mapper</code>, cuál la <code>Reducer</code>,
+ * implementado. Se encargar&#225; de lanzar el propio trabajo <code>MapReduce</code>,
+ * indicando cu&#225;l ser&#225; la clase <code>Mapper</code>, cu&#225;l la <code>Reducer</code>,
  * etc.
  * @author Alberto Luengo Cabanillas
  *
@@ -27,10 +26,10 @@ import org.apache.hadoop.util.ToolRunner;
 public class MRPGAMaster extends Configured implements Tool {
 	
 	/**
-	 * Método que lanza un trabajo<code>MapReduce</code>, obteniendo la 
-	 * configuración necesaria del HDFS subyacente (parámetros, sistemas de ficheros,etc)
-	 * @param numProblem Número que indica el número de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
-	 * @param iter Iteracióna actual del sistema en el que se enmarca esta clase.
+	 * M&#233;todo que lanza un trabajo<code>MapReduce</code>, obteniendo la 
+	 * configuraci&#243;n necesaria del HDFS subyacente (par&#225;metros, sistemas de ficheros,etc)
+	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
+	 * @param iter Iteraci&#243;na actual del sistema en el que se enmarca esta clase.
 	 */
 	void launch(int numProblem, String iter) {
 		Configuration conf = new Configuration();
@@ -131,11 +130,11 @@ public class MRPGAMaster extends Configured implements Tool {
 	}
 		
 	/**
-	 * Método de la clase <code>ToolRunner</code> que parsea los parámetros 
-	 * introducidos por consola y ejecuta el método <code>launch</code> y accede 
-	 * a la configuración (clase <code>Configuration</code>) del HDFS subyacente.
-	 * @param args Array de parámetros que recibe del <code>Coordinador</code>.
-	 * @return Código de salida (0-->"Ejecución correcta", -1-->"Error").
+	 * M&#233;todo de la clase <code>ToolRunner</code> que parsea los par&#225;metros 
+	 * introducidos por consola y ejecuta el m&#233;todo <code>launch</code> y accede 
+	 * a la configuraci&#243;n (clase <code>Configuration</code>) del HDFS subyacente.
+	 * @param args Array de par&#225;metros que recibe del <code>Coordinador</code>.
+	 * @return C&#243;digo de salida (0-->"Ejecuci&#243;n correcta", -1-->"Error").
 	 */
 	public int run(String[] args) throws Exception {
 		int	numProblem = Integer.parseInt(args[0]);
@@ -145,11 +144,11 @@ public class MRPGAMaster extends Configured implements Tool {
 	}
 	
 	/**
-	 * Método principal de la clase <code>MRPGAMaster</code> cuya única función es 
-	 * llamar al método <code>run</code> de la misma clase.
+	 * M&#233;todo principal de la clase <code>MRPGAMaster</code> cuya &#250;nica funci&#243;n es 
+	 * llamar al m&#233;todo <code>run</code> de la misma clase.
 	 * 
 	 * @param argv Array de comandos recibidos del <code>Coordinador</code>.
-	 * @throws Exception Excepción genérica.
+	 * @throws Exception Excepci&#243;n gen&#233;rica.
 	 */
 	public static void main(String[] argv) throws Exception {
 		int res = ToolRunner.run(new Configuration(), new MRPGAMaster(), argv);
