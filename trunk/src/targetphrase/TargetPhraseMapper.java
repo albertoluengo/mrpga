@@ -136,7 +136,7 @@ public class TargetPhraseMapper extends Mapper<Object, Text, Text, IntWritable> 
 	 * M&#233;todo que, una vez todos los elementos hayan sido procesados, 
 	 * escribe en un fichero global el mejor de ellos (si se ha elegido
 	 * introducir elitismo).
-	 * @param debug N&#250;mero entero (1-->"S&#237;	", 0-->"No") que indica si interesa guardar un hist&#243;rico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
+	 * @param debug N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si interesa guardar un hist&#243;rico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
 	 * @param bestIndiv Texto que representa al mejor individuo encontrado en una poblaci&#243;n por un <code>Mapper</code>, seg&#250;n los criterios del problema concreto.
 	 * @param bestFitness N&#250;mero que representa al mejor fitness encontrado en una poblaci&#243;n por un <code>Mapper</code>, seg&#250;n los criterios del problema concreto.
 	 * @throws IOException Excepci&#243;n que se lanza si ha habido alg&#250;n error manipulando ficheros o directorios.

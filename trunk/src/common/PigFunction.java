@@ -1,8 +1,15 @@
 package common;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.Vector;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.pig.PigServer;
@@ -29,33 +36,50 @@ public class PigFunction {
 	 */
 	public static void main(String[] args) throws IOException {
 		Configuration conf = new Configuration();
-		String inputFile = args[0];
-		int iteration = Integer.parseInt(args[1]);
+		int iteration = Integer.parseInt(args[0]);
+		int numReducers = Integer.parseInt(args[1]);
 
 		FileSystem fs = FileSystem.get(conf);
-		Path resultPath = new Path("pigResults");
-	    
-	    try {
-	    	if (fs.exists(resultPath)) {
-	    		//Borro el directorio con todo su contenido
-	    		fs.delete(resultPath,true);
-	    	}
-	    }
-	    catch (IOException ioe) {
-	    	System.err.println("PIGFUNCTION["+iteration+"]:Se ha producido un error borrando el dir de salida de Pig");
-	    	System.exit(1);
-	    }
+		String users = conf.get("hadoop.job.ugi");
+		String[] commas = users.split(",");
+		String userName = commas[0];
+		String pigResultsDir = "/user/"+userName+"/pigResults";
+		String pigTempResultsDir = "/user/"+userName+"/pigTempResults";
+		String pigResultsFile = pigResultsDir+"/pigResults.dat";
 		
+		Path resultTempPath = new Path(pigTempResultsDir);
+		Path resultPath = new Path(pigResultsDir);
+		Path resultsFilePath = new Path(pigResultsFile);
+		FSDataOutputStream dos = fs.create(resultsFilePath, true);
+		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(dos));
+		String strLine;
+	    
 	    String popIterationName = "input/population_"+iteration+".dat";
 		PigServer pigServer = new PigServer("mapreduce");
 		
-		pigServer.registerQuery("raw_data = load '" + inputFile + "' using PigStorage('	');");
-		pigServer.registerQuery("B = foreach raw_data generate $0 as id;");
-		pigServer.registerQuery("store B into 'pigResults';");
-		pigServer.renameFile("pigResults/part-00000", popIterationName);
+		String inputFiles = "output/part-r-*";
 		
-		//Cuando acabo, borro el contenido del dir 'pigResults' (en el que sólo quedarán los logs...)
+		pigServer.registerQuery("raw_data = load '"+inputFiles+"' using PigStorage('\t');");
+		pigServer.registerQuery("B = foreach raw_data generate $0 as id;");
+		pigServer.registerQuery("store B into 'pigTempResults';");
+		
+		for (int numRed=0;numRed<numReducers; numRed++)
+		{
+			Path partialPopPath = new Path("pigTempResults/part-0000"+numRed);
+			FSDataInputStream dis = fs.open(partialPopPath);
+			BufferedReader br = new BufferedReader(new InputStreamReader(dis));
+			while ((strLine = br.readLine()) != null)   {
+				bw.write(strLine+"\n");
+			}
+			dis.close();
+		}
+		bw.close();
+		
+		pigServer.renameFile(pigResultsFile, popIterationName);
+		
+		//Cuando acabo, borro el contenido de los dir 'pigResults'
 		fs.delete(resultPath,true);
+		fs.delete(resultTempPath,true);
 
 	}
 

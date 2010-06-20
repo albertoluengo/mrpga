@@ -129,8 +129,8 @@ public class OneMAXMapper extends Mapper<Object, Text, Text, DoubleWritable> {
 	}
 	
 	/**
-	 * M&#233;todo que, una vez todos los elementos hayan sido procesados, 
-	 * escribe en un fichero global el mejor de ellos (si se ha elegido
+	 * M&#233;todo que, una vez todos los elementos que le corresponden al <code>Mapper</code> hayan sido procesados, 
+	 * escribe en un fichero globalmente accesible el mejor de ellos (si se ha elegido
 	 * introducir elitismo).
 	 * @param debug N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si interesa guardar un hist&#243;rico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
 	 * @param bestIndiv Texto que representa al mejor individuo encontrado en una poblaci&#243;n por un <code>Mapper</code>, seg&#250;n los criterios del problema concreto.
