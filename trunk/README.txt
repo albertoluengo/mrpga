@@ -12,17 +12,18 @@ To compile the class files and the jar files, run
 $ ant compile jar
 
 This will create a build and bin directory for the class files, by compiling 
-against Hadoop 0.20.1 jar located in the "lib.hadoop" directory and Pig 0.4.0 jar
-located in the "lib.pig" dir. Also, it will create 
-mrpga.jar with MapReduces simple genetic algorithm.
+against Hadoop 0.20.1 jar and Pig 0.4.0 located in the "lib.hadoop.pig" directory. Also, it will create 
+mrpga.jar with MapReduces simple genetic algorithms.
 
 ###################################################################################
 To execute, go to the root Hadoop directory and run, 
 
-$ hadoop jar mrpga.jar <numProblem> <nIterations> <sizePop> <geneNumber> <crossProb> <boolElit> <mutation> <debug> <endCriterial> [<targetPhrase>]
+$ hadoop jar mrpga.jar <numProblem> <nReducers> <nIterations> <sizePop> <geneNumber> <crossProb> <boolElit> <mutation> <debug> <endCriterial> [<targetPhrase>]
 
 where: 
-***<numProblem> is the number of the problem to execute (1-->TargetPhrase, 2-->OneMax, 3-->PPeaks), ***<nIterations> is the number of iterations the system will performance, 
+***<numProblem> is the number of the problem to execute (1-->TargetPhrase, 2-->OneMax, 3-->PPeaks),
+***<nReducers> is the number of Reducer tasks the MapReduce job will launch, 
+***<nIterations> is the number of iterations the system will performance, 
 ***<sizePop> is the number of individuals in each population, 
 ***<geneNumber> corresponds to the length of each individual (set to target length in "TargetPhrase" problem), 
 ***<crossProb> is the probability of crossing individuals, 
@@ -30,7 +31,7 @@ where:
 ***<debug> keeps a list with old populations already processed and, finally, 
 ***<endCriterial> indicates the way of terminating the algorithm (0-->by iterations, 1-->by target). 
 
-Optionally, there´s the <targetPhrase> parameter that modifies the default target phrase ("Hello_world!") in TargetPhrase problem.
+Optionally, thereÂ´s the <targetPhrase> parameter that modifies the default target phrase ("Hello_world!") in TargetPhrase problem.
 
 
 For example, for 'TargetPhrase' problem, we could execute:
