@@ -20,7 +20,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 
 /**
- * Clase que representa un nodo <code>Reducer</code> dentro del framework 
+ * Clase que representa un nodo <code>Reducer</code> dentro del <i>framework</i>
  * de ejecuci&#243;n <code>MapReduce</code>, implementando todas las funciones
  * necesarias para ello (<code>reduce()</code>, <code>setup()</code>, etc).
  * @author Alberto Luengo Cabanillas
@@ -242,9 +242,9 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	}
 	
 	/**
-	 * M&#233;todo que ejecuta el &#250;ltimo torneo de individuos cuando todos los usuarios
+	 * M&#233;todo que ejecuta el &#250;ltimo torneo de selecci&#243;n de individuos cuando todos ellos ya
 	 * han sido procesados. Esto se debe a la ventana activa de <code>tournamentSize</code>
-	 * elementos con los que se trabaja
+	 * elementos con la que se trabaja.
 	 * @param context Instancia de la clase <code>Context</code> que facilita informaci&#243;n acerca
 	 * del trabajo <code>MapReduce</code> que se est&#225; ejecutando. 
 	 * @throws IOException Excepci&#243;n lanzada al haber alg&#250;n problema manipulando
@@ -340,7 +340,7 @@ public class OneMAXReducer extends Reducer<Text,DoubleWritable,Text,DoubleWritab
 	}
 	
 	/**
-	 * M&#233;todo que implementa el metodo de seleccion por torneo sin reemplazamiento
+	 * M&#233;todo que implementa la funci&#243;n de selecci&#243;n de individuos por torneo sin reemplazamiento
 	 * entre los distintos individuos de una poblaci&#243;n, devolviendo los ganadores
 	 * del mismo.
 	 * @param tournArray Conjunto de individuos (contendientes) sobre los que realizar el torneo.

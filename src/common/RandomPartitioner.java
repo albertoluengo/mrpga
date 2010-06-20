@@ -9,7 +9,7 @@ import org.apache.hadoop.mapreduce.Partitioner;
 /**
  * Clase que sobreescribe el comportamiento de la clase 
  * <code>Partitioner</code> por defecto para sustituirlo por otro que devuelva
- * un número aleatorio entero de particiones independientes del par (clave,valor)
+ * un n&#250;mero aleatorio entero de particiones independientes del par (clave,valor)
  * pasados.
  * @author Alberto Luengo Cabanillas
  */

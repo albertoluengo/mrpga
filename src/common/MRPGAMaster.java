@@ -9,11 +9,14 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+
+
 
 /**
  * Clase que representa el nodo Master del sistema <code>MapReduce</code> 
@@ -31,7 +34,8 @@ public class MRPGAMaster extends Configured implements Tool {
 	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
 	 * @param iter Iteraci&#243;na actual del sistema en el que se enmarca esta clase.
 	 */
-	void launch(int numProblem, String iter) {
+	@SuppressWarnings("deprecation")
+	void launch(int numProblem, String iter, int numReducers) {
 		Configuration conf = new Configuration();
 		Job job = null;
 		FileSystem fs = null;
@@ -49,19 +53,19 @@ public class MRPGAMaster extends Configured implements Tool {
 		}
 		job.setJarByClass(common.MRPGAMaster.class);
 		
-		
 		switch (numProblem){
 		
 		case 1: //Problema 'Frase Objetivo'
 			System.out.println("MASTER: PROBLEMA FRASE OBJETIVO");
 			job.setMapperClass(targetphrase.TargetPhraseMapper.class);
 			job.setReducerClass(targetphrase.TargetPhraseReducer.class);
-			//job.setCombinerClass(fuentes.HWorldPseudoReducer.class);
+			job.setCombinerClass(targetphrase.TargetPhraseReducer.class);
 			//Especificamos los tipos de salida...
 		    job.setOutputKeyClass(Text.class);
 		    job.setOutputValueClass(IntWritable.class);
 		    job.setPartitionerClass(common.RandomPartitioner.class);
-		    job.setJobName("mrpga-target-"+iter);
+		    job.setJobName("mrpga-targetphrase-"+iter);
+		    job.setNumReduceTasks(numReducers);
 		    break;
 			
 		case 2: //Problema 'OneMAX'
@@ -139,7 +143,8 @@ public class MRPGAMaster extends Configured implements Tool {
 	public int run(String[] args) throws Exception {
 		int	numProblem = Integer.parseInt(args[0]);
 		String iter = args[1];
-		launch(numProblem, iter);
+		int numReducers = Integer.parseInt(args[2]);
+		launch(numProblem, iter, numReducers);
 		return 0;
 	}
 	

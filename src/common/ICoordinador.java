@@ -20,6 +20,7 @@ public interface ICoordinador {
 	 * trabajos <code>MapReduce</code> sobre <code>Hadoop</code> y <code>Pig</code> para procesar las distintas
 	 * poblaciones que se vayan generando, hasta obtener un resultado.
 	 * @param numpop Tama&#241;o (entero) de la poblaci&#243;n a procesar.
+	 * @param numReducers N&#250;mero de tareas <code>Reducer</code> que lanzar&#225; el trabajo <code>MapReduce</code>
 	 * @param maxiter N&#250;mero m&#225;ximo de iteraciones por las que va a atravesar el sistema.
 	 * @param debug N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si interesa guardar un hist&#243;rico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
 	 * @param boolElit N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si se introduce elitismo o no en la generaci&#243;n de descendencia.
@@ -31,7 +32,7 @@ public interface ICoordinador {
 	 * @throws ExecException Excepci&#243;n que lanza un script <code>Pig</code> si encuentra alg&#250;n problema en su ejecuci&#243;n.
 	 * @throws Exception Excepci&#243;n padre gen&#233;rica de <code>Java</code>
 	 */
-	public String readFromClientAndIterate(int numpop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number)throws Exception;
+	public String readFromClientAndIterate(int numpop, int numReducers, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number)throws Exception;
 	
 	/**
 	 * M&#233;todo que copia los ficheros de configuraci&#243;n y poblacionales generados 
@@ -68,10 +69,10 @@ public interface ICoordinador {
 	/**
 	 * M&#233;todo que lee un fichero y parsea su contenido como una <code>HashTable</code> con el
 	 * fin de facilitar su posterior procesamiento.
-	 * @param filePath Ruta en el HDFS del fichero a procesar.
+	 * @param numReducers Número de tareas reduce a lanzar.
 	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
 	 * @return Una tabla Hash con todos los elementos de la actual poblaci&#243;n en forma "individuo-fitness".
 	 * @throws IOException Excepci&#243;n lanzada si existe alg&#250;n problema manipulando directorios o ficheros.
 	 */
-	public Hashtable generateIndividualsTable(Path filePath, String numProblem)throws IOException;
+	public Hashtable generateIndividualsTable(int numReducers, String numProblem)throws IOException;
 }

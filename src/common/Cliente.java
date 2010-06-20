@@ -10,6 +10,7 @@ import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -216,6 +217,7 @@ public class Cliente extends Configured implements Tool {
 	 * M&#233;todo que inicia el sistema <code>MRPGA</code>, obteniendo la configuraci&#243;n necesaria del HDFS subyacente
 	 * (par&#225;metros, sistemas de ficheros,etc).
 	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
+	 * @param numReducers @param numReducers N&#250;mero de tareas <code>Reducer</code> que lanzar&#225; el trabajo <code>MapReduce</code>
 	 * @param maxIter N&#250;mero m&#225;ximo de iteraciones por las que va a atravesar el sistema.
 	 * @param population Tama&#209;o (entero) de la poblaci&#243;n a procesar.
 	 * @param geneNumber Longitud de los individuos de las poblaciones a procesar (no aplicable al problema <code>TargetPhrase</code>).
@@ -226,7 +228,7 @@ public class Cliente extends Configured implements Tool {
 	 * @param endCriterial N&#250;mero entero (0-->"Por Iteraciones", 1-->"Por Objetivo") que indica la forma de terminaci&#243;n del algoritmo.
 	 * @param targetPhrase Cadena de texto que representa la frase objetivo a conseguir (s&#243;lo aplicable al problema <code>TargetPhrase</code>).
 	 */
-	void launch(String numProblem, int maxIter, int population, int geneNumber, double crossProb, int boolElit, int mutation, int debug, int endCriterial, String targetPhrase) {
+	void launch(String numProblem, int numReducers, int maxIter, int population, int geneNumber, double crossProb, int boolElit, int mutation, int debug, int endCriterial, String targetPhrase) {
 		
 		Configuration conf = new Configuration();
 		FileSystem fs = null;
@@ -237,22 +239,30 @@ public class Cliente extends Configured implements Tool {
 			e.printStackTrace();
 		}
 		String users = conf.get("hadoop.job.ugi");
+		int numMappers = Integer.parseInt(conf.get("mapred.map.tasks"));
 		String[] commas = users.split(",");
 		String userName = commas[0];
 		String result ="";
 	
 		//Como se van a generar individuos con un numero de genes igual a la longitud
-		//de la palabra objetivo, su posibilidad de mutaci&#243;n ser&#225; su inversa...
+		//de la palabra objetivo, su posibilidad de mutación será su inversa...
 		float mutationrate= 1.0f/(float)targetPhrase.length();
 		Coordinador coord = new Coordinador(userName);
+		
+		//Calculamos cuántos elementos maneja cada mapper, si el numero de individuos
+		//de la población mod numMappers es distinto que 0, buscamos el siguiente número
+		//por arriba, para una distribución equitativa...
+		while(population%numMappers !=0)
+			population++;
+		int popPerMapper = (population / numMappers);
 		
 		/**
 		 * PASO 1.- Generamos la poblacion inicial y los ficheros de configuracion 
 		 * para los nodos Worker... 
 		 */
 		generatePopulationFile(targetPhrase,population,geneNumber,Integer.parseInt(numProblem));
-		generateMapperConfigurationFile(targetPhrase, population, boolElit, debug,geneNumber);
-		generateReducerConfigurationFile(population, maxIter, boolElit, mutationrate, mutation, crossProb, targetPhrase); 
+		generateMapperConfigurationFile(targetPhrase, popPerMapper, boolElit, debug,geneNumber);
+		generateReducerConfigurationFile(popPerMapper, maxIter, boolElit, mutationrate, mutation, crossProb, targetPhrase); 
 		
 
 		/**
@@ -261,7 +271,7 @@ public class Cliente extends Configured implements Tool {
 		System.out.println("CLIENTE: Lanzando trabajo...");
         final long startTime = System.currentTimeMillis();
 		try {
-			result = coord.readFromClientAndIterate(population, maxIter, debug, boolElit, numProblem, endCriterial,geneNumber);
+			result = coord.readFromClientAndIterate(population, numReducers, maxIter, debug, boolElit, numProblem, endCriterial,geneNumber);
 		} catch (IOException e) {
 			System.err.println("CLIENTE: Se ha producido un error de I/O en la conexion al HDFS");
 		}catch (Exception e) {
@@ -286,9 +296,9 @@ public class Cliente extends Configured implements Tool {
 	 */
 	@Override
 	public int run(String[] args) throws Exception {
-		if (args.length < 9) {
+		if (args.length < 10) {
 			System.err.println("***********************************");
-			System.err.println("Uso: "+ getClass().getName()+" <numProblem> <nIterations> <sizePop> <geneNumber> <crossProb> <boolElit> <mutation> <debug> <endCriterial> [<targetPhrase>]");
+			System.err.println("Uso: hadoop jar mrpga.jar <numProblem> <nReducers> <nIterations> <sizePop> <geneNumber> <crossProb> <boolElit> <mutation> <debug> <endCriterial> [<targetPhrase>]");
 			System.err.println("***********************************");
 			ToolRunner.printGenericCommandUsage(System.err);
 			System.err.println("***********************************");
@@ -296,31 +306,33 @@ public class Cliente extends Configured implements Tool {
 		}
 		String numProblem = args[0];
 		System.out.println("NUMPROBLEM: "+numProblem);
-		int	numIterations = Integer.parseInt(args[1]);
+		int	numReducers = Integer.parseInt(args[1]);
+		System.out.println("NUM REDUCERS: "+numReducers);
+		int	numIterations = Integer.parseInt(args[2]);
 		System.out.println("NUM ITERATIONS: "+numIterations);
-		int sizePop = Integer.parseInt(args[2]);
+		int sizePop = Integer.parseInt(args[3]);
 		System.out.println("POPULATION: "+sizePop);
-		int geneNumber = Integer.parseInt(args[3]);
+		int geneNumber = Integer.parseInt(args[4]);
 		System.out.println("GENE NUMBER: "+geneNumber);
-		double crossProb = Double.parseDouble(args[4]);
+		double crossProb = Double.parseDouble(args[5]);
 		System.out.println("CROSSPROB: "+crossProb);
-		int boolElit = Integer.parseInt(args[5]);
+		int boolElit = Integer.parseInt(args[6]);
 		System.out.println("ELITISM?: "+boolElit);
-		int mutation = Integer.parseInt(args[6]);
+		int mutation = Integer.parseInt(args[7]);
 		System.out.println("MUTATION?: "+mutation);
-		int debug = Integer.parseInt(args[7]);
+		int debug = Integer.parseInt(args[8]);
 		System.out.println("DEBUG?: "+debug);
-		int endCriterial = Integer.parseInt(args[8]);
+		int endCriterial = Integer.parseInt(args[9]);
 		System.out.println("END CRITERIAL: "+endCriterial);
 		String target_phrase = "";
 		try {
-			target_phrase = args[9];
+			target_phrase = args[10];
 		}
 		catch (ArrayIndexOutOfBoundsException e){
 			target_phrase = "Hello_world!";
 		}
 		System.out.println("TARGET PHRASE: "+target_phrase);
-		launch(numProblem, numIterations, sizePop, geneNumber, crossProb, boolElit, mutation, debug, endCriterial, target_phrase);
+		launch(numProblem, numReducers, numIterations, sizePop, geneNumber, crossProb, boolElit, mutation, debug, endCriterial, target_phrase);
 		return 0;
 	}
 	/**

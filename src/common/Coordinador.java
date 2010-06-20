@@ -28,7 +28,6 @@ public class Coordinador implements ICoordinador {
 	String hdfsPopString;
 	Path hdfsPopulationPath;
 	String subOptString; 
-	Path subOptimalResultsFilePath;
 	Hashtable<String, Integer> hTable;
 	
 
@@ -42,8 +41,6 @@ public class Coordinador implements ICoordinador {
 		USERNAME = userName;
 		hdfsPopString = "/user/"+USERNAME+"/input/population.dat";
 		hdfsPopulationPath=new Path(hdfsPopString);
-		subOptString = "/user/"+USERNAME+"/output/part-r-00000";
-		subOptimalResultsFilePath= new Path(subOptString);
 		hTable = new Hashtable();
 	}
 		
@@ -110,17 +107,18 @@ public class Coordinador implements ICoordinador {
 	    catch (IOException ioe) {
 	    	System.err.println("COORD:Se ha producido un error borrando el dir de oldPops!");
 	    	System.exit(1);
-	    }
+	    }    
+	    
 	}
 	
 	
 	
 	@SuppressWarnings("static-access")
 	@Override
-	public String readFromClientAndIterate(int numPop, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number) throws IOException, ExecException, Exception {
+	public String readFromClientAndIterate(int numPop, int numReducers, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number) throws IOException, ExecException, Exception {
 		
 		String bestIndividual="";
-		String []args = new String[2];
+		String []args = new String[3];
 		String []args2 = new String[2];
 		Configuration conf = new Configuration();
 		FileSystem fs = FileSystem.get(conf);
@@ -157,24 +155,25 @@ public class Coordinador implements ICoordinador {
 			args[0] = numProblem;
 			String iteration=i+"";
 			args[1] = iteration;
+			String numRed=numReducers+"";
+			args[2] = numRed;
 			MRPGAMaster.main(args);
 			System.out.println("COORDINADOR["+i+"]: ACABA EL MASTER");
 			
 			/**Miramos si en la poblacion resultante tenemos el resultado objetivo... 
 			 */
 			System.out.println("COORDINADOR["+i+"]: BUSCO EL FITNESS OBJETIVO...");			
-			hTable = this.generateIndividualsTable(subOptimalResultsFilePath,numProblem);
+			hTable = this.generateIndividualsTable(numReducers,numProblem);
 			/**
 			 * Si el problema es el de 'frase objetivo',
 			 * su fitness ideal sera 0
 			 */
-			if (numProblem == "1")
+			if (Integer.parseInt(numProblem) == 1)
 				if (hTable.containsValue(0))
 				{
 					System.out.println("COORDINADOR[TARGETPHRASE]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
 					break;
 				}
-					
 				else 
 					System.out.println("COORDINADOR[TARGETPHRASE]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
 			
@@ -182,7 +181,7 @@ public class Coordinador implements ICoordinador {
 			 * Si el problema es 'OneMax', su fitness ideal 
 			 * sera la longitud total del individuo a 1
 			 */
-			if (numProblem == "2")
+			if (Integer.parseInt(numProblem) == 2)
 				if (hTable.containsValue(gene_number))
 				{
 					System.out.println("COORDINADOR[ONEMAX]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
@@ -195,7 +194,7 @@ public class Coordinador implements ICoordinador {
 			 * Si el problema es 'PPeaks', 
 			 * su fitness ideal sera 1 (el individuo mas cercano a un pico dado)...
 			 */
-			if (numProblem == "3")
+			if (Integer.parseInt(numProblem) == 3)
 				if (hTable.containsValue(1))
 				{
 					System.out.println("COORDINADOR[PPEAKS]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
@@ -206,8 +205,8 @@ public class Coordinador implements ICoordinador {
 			
 			System.out.println("COORDINADOR["+i+"]: Comienza el script de Pig");
 			PigFunction pigFun = new PigFunction();
-			args2[0] = subOptimalResultsFilePath.toString();
-			args2[1] = i+"";
+			args2[0] = i+"";
+			args2[1] = numReducers+"";
 			pigFun.main(args2);
 			System.out.println("COORDINADOR["+i+"]: Acaba el script de Pig");
 			
@@ -404,65 +403,71 @@ public class Coordinador implements ICoordinador {
 	
 
 	@Override
-	public Hashtable generateIndividualsTable(Path resultsPath, String numProblem) throws IOException {
+	public Hashtable generateIndividualsTable(int numReducers, String numProblem) throws IOException {
 		Hashtable hTable = new Hashtable();
 		FileSystem hdfs = FileSystem.get(new Configuration());
 		Scanner s = null;
-	
-		//Leo el fichero alojado en el HDFS
-		//Validamos primero el path de entrada antes de leer del fichero
-		if (!hdfs.exists(resultsPath))
-		{
-			throw new IOException("El fichero especificado " +resultsPath.toString() + "no existe");
-		}
+		String inputFiles = "output/part-r-0000";
 		
-		if (!hdfs.isFile(resultsPath))
-		{
-			throw new IOException("El fichero especificado "+resultsPath.toString() + "no existe");
-		}
-		
-		FSDataInputStream dis = hdfs.open(resultsPath);
-		BufferedReader br = new BufferedReader(new InputStreamReader(dis));
-		
-	    try {
-	    	s = new Scanner(br);
-			while (s.hasNextLine()) {
-				String linea = s.nextLine();
-				Scanner sl = new Scanner(linea);
-				/**La expresion regular que nos indica que nuestro delimitador es uno o
-				 * varios espacios es \\s.
-				 */
-				sl.useDelimiter("\t");
-				/**Ahora metemos el primer elemento que encontramos (la palabra) como
-				 * clave del Hashtable y el segundo (el fitness) como valor
-				 */
-				String keyWord = sl.next();
-				String fitness = sl.next();
-				/**
-				 * En el caso del problema de los P-Picos, manejamos siempre
-				 * valores double...
-				 */
-				double valor = Double.parseDouble(fitness);
-				if (Integer.parseInt(numProblem)!= 3)
-					valor = (int)valor;
-				hTable.put(keyWord, valor);
+		for (int numRed=0;numRed<numReducers; numRed++){
+			//Leo el fichero alojado en el HDFS...
+			//Validamos primero el path de entrada antes de leer del fichero
+			Path resultPath = new Path(inputFiles+numRed);
+			if (!hdfs.exists(resultPath))
+			{
+				throw new IOException("El fichero especificado " +resultPath.toString() + "no existe");
 			}
-	    }
-	    catch(Exception e){
-	    	e.printStackTrace();
-	    }finally{
-	    	/**En el finally cerramos el fichero, para asegurarnos
-	    	 * que se cierra tanto si todo va bien como si salta 
-	    	 * una excepcion.
-	    	 */
-	    	try{                    
-	    		if( null != s ){   
-	    			s.close();     
-	    		}                  
-	    	}catch (Exception e2){ 
-	    		e2.printStackTrace();
-	    	}
-	    }
+			
+			if (!hdfs.isFile(resultPath))
+			{
+				throw new IOException("El fichero especificado "+resultPath.toString() + "no existe");
+			}
+		
+			FSDataInputStream dis = hdfs.open(resultPath);
+			BufferedReader br = new BufferedReader(new InputStreamReader(dis));
+			
+		    try {
+		    	s = new Scanner(br);
+				while (s.hasNextLine()) {
+					String linea = s.nextLine();
+					Scanner sl = new Scanner(linea);
+					/**La expresion regular que nos indica que nuestro delimitador es uno o
+					 * varios espacios es \\s.
+					 */
+					sl.useDelimiter("\t");
+					/**Ahora metemos el primer elemento que encontramos (la palabra) como
+					 * clave del Hashtable y el segundo (el fitness) como valor
+					 */
+					String keyWord = sl.next();
+					String fitness = sl.next();
+					/**
+					 * En el caso del problema de los P-Picos, manejamos siempre
+					 * valores double...
+					 */
+					double valor = Double.parseDouble(fitness);
+					if (Integer.parseInt(numProblem)!= 3)
+						valor = (int)valor;
+					hTable.put(keyWord, valor);
+				}
+		    }
+		    catch(Exception e){
+		    	e.printStackTrace();
+		    }finally{
+		    	/**En el finally cerramos el fichero, para asegurarnos
+		    	 * que se cierra tanto si todo va bien como si salta 
+		    	 * una excepcion.
+		    	 */
+		    	try{                    
+		    		if( null != s ){   
+		    			s.close();     
+		    		}                  
+		    	}catch (Exception e2){ 
+		    		e2.printStackTrace();
+		    	}
+		    	//Cerramos el descriptor de fichero
+		    	dis.close();
+		    }
+		}
 	return hTable;
 	}
 }
