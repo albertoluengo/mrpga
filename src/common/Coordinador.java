@@ -3,9 +3,12 @@ package common;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Scanner;
+import java.util.Vector;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -14,6 +17,9 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.pig.backend.executionengine.ExecException;
+
+import problems.*;
+
 
 /**
  * Clase que leer&#225; los datos de entrada del cliente y ejecutar&#225; las iteraciones 
@@ -36,14 +42,15 @@ public class Coordinador implements ICoordinador {
 	 * @param userName Nombre de usuario con permisos suficientes que lanza 
 	 * el trabajo MapReduce.
 	 */
-	Coordinador(String userName) {
-		localPopulationFile=new Path("./population.dat");
+	Coordinador(String userName, String userDir) {
 		USERNAME = userName;
+		localPopulationFile=new Path(userDir+USERNAME+"/population.dat");
 		hdfsPopString = "/user/"+USERNAME+"/input/population.dat";
 		hdfsPopulationPath=new Path(hdfsPopString);
 		hTable = new Hashtable();
 	}
 		
+	
 	/**
 	 * M&#233;todo privado que se ocupa de borrar todos los directorios creados
 	 * durante las distintas ejecuciones del sistema.
@@ -115,15 +122,17 @@ public class Coordinador implements ICoordinador {
 	
 	@SuppressWarnings("static-access")
 	@Override
-	public String readFromClientAndIterate(int numPop, int numReducers, int maxiter, int debug, int boolElit, String numProblem, int endCriterial, int gene_number) throws IOException, ExecException, Exception {
+	public String readFromClientAndIterate(int numPop, int numReducers, int maxiter, int debug, int boolElit, String problemName, String reducerName, int endCriterial, int gene_number, Hashtable configValues, String userDir) throws IOException, ExecException, Exception {
 		
 		String bestIndividual="";
-		String []args = new String[3];
-		String []args2 = new String[2];
+		String []args = new String[4];
+		String []args2 = new String[3];
 		Configuration conf = new Configuration();
 		FileSystem fs = FileSystem.get(conf);
 		JobContext jCont = new JobContext(conf, null);	
-		
+		String targetFitnessString = configValues.get("targetFitness").toString();
+		double targetFitness =Double.parseDouble(targetFitnessString);
+		String bestCritFitness = configValues.get("bestFitness").toString();
 		
 		//Lo primero que tiene hacer el Coordinador es regenerar la estructura de dirs...
 		this.regenDirs(fs);
@@ -148,65 +157,45 @@ public class Coordinador implements ICoordinador {
 			Path currentPopulationFilePath = new Path (currPopString);
 			
 			//Si es la primera iteracion, leemos el fichero localmente...
-			if (i==0) this.uploadToHDFS(jCont, localPopulationFile.toString(),boolElit);		
+			if (i==0) this.uploadToHDFS(jCont, localPopulationFile.toString(),boolElit,userDir);		
 			
-			System.out.println("COORDINADOR["+i+"]: SE LLAMA AL MASTER");
-			//Le paso los argumentos...
-			args[0] = numProblem;
+			//Instancio dinámicamente las clases necesarias con Reflection...
+			Class <? extends MRPGAMapper> problem_map_class;
+			Class <? extends MRPGAReducer> problem_reducer_class;
+			String map_class_name = "problems."+problemName;
+			String reduce_class_name = "problems."+reducerName;
+			problem_map_class = (Class <? extends MRPGAMapper>)Class.forName(map_class_name);
+			problem_reducer_class = (Class <? extends MRPGAReducer>)Class.forName(reduce_class_name);
+			
 			String iteration=i+"";
-			args[1] = iteration;
+			args[0] = iteration;
 			String numRed=numReducers+"";
-			args[2] = numRed;
+			args[1] = numRed;
+			args[2] = problem_map_class.getName().toString();
+			args[3] = problem_reducer_class.getName().toString();
+			System.out.println("COORDINADOR["+i+"]: SE LLAMA AL MASTER");
 			MRPGAMaster.main(args);
 			System.out.println("COORDINADOR["+i+"]: ACABA EL MASTER");
 			
 			/**Miramos si en la poblacion resultante tenemos el resultado objetivo... 
 			 */
 			System.out.println("COORDINADOR["+i+"]: BUSCO EL FITNESS OBJETIVO...");			
-			hTable = this.generateIndividualsTable(numReducers,numProblem);
-			/**
-			 * Si el problema es el de 'frase objetivo',
-			 * su fitness ideal sera 0
-			 */
-			if (Integer.parseInt(numProblem) == 1)
-				if (hTable.containsValue(0))
-				{
-					System.out.println("COORDINADOR[TARGETPHRASE]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
-					break;
-				}
-				else 
-					System.out.println("COORDINADOR[TARGETPHRASE]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
+			hTable = this.generateIndividualsTable(numReducers);
 			
-			/**
-			 * Si el problema es 'OneMax', su fitness ideal 
-			 * sera la longitud total del individuo a 1
-			 */
-			if (Integer.parseInt(numProblem) == 2)
-				if (hTable.containsValue(gene_number))
-				{
-					System.out.println("COORDINADOR[ONEMAX]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
-					break;
-				}
-				else 
-					System.out.println("COORDINADOR[ONEMAX]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
+			if (hTable.containsValue(targetFitness))
+			{
+				System.out.println("COORDINADOR["+problemName+"]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
+				break;
+			}
+			else 
+				System.out.println("COORDINADOR["+problemName+"]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
 			
-			/**
-			 * Si el problema es 'PPeaks', 
-			 * su fitness ideal sera 1 (el individuo mas cercano a un pico dado)...
-			 */
-			if (Integer.parseInt(numProblem) == 3)
-				if (hTable.containsValue(1))
-				{
-					System.out.println("COORDINADOR[PPEAKS]: EN LA ITERACIÓN "+i+" SE HA ENCONTRADO EL INDIVIDUO OBJETIVO");
-					break;
-				}
-				else 
-					System.out.println("COORDINADOR[PPEAKS]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
 			
 			System.out.println("COORDINADOR["+i+"]: Comienza el script de Pig");
 			PigFunction pigFun = new PigFunction();
 			args2[0] = i+"";
 			args2[1] = numReducers+"";
+			args2[2] = USERNAME;
 			pigFun.main(args2);
 			System.out.println("COORDINADOR["+i+"]: Acaba el script de Pig");
 			
@@ -253,7 +242,8 @@ public class Coordinador implements ICoordinador {
 		}
 		//Imprimimos el(los) mejor(es) individuo(s) que hayamos encontrado...
 		System.out.println("COORDINADOR: IMPRESIÓN DEL(DE LOS) MEJOR(ES) INDIVIDUO(S)...");
-		bestIndividual = printBestIndividual(hTable,numProblem);
+		
+		bestIndividual = printBestIndividual(hTable,bestCritFitness);
 		//System.out.println("COORDINADOR: Acabo de imprimir el mejor individuo...");
 	return bestIndividual;
 	}
@@ -282,30 +272,29 @@ public class Coordinador implements ICoordinador {
 
 	
 	@Override
-	public void uploadToHDFS(JobContext cont, String population, int boolElit) throws IOException {
+	public void uploadToHDFS(JobContext cont, String population, int boolElit, String userDir) throws IOException {
 		//Indicamos a que directorio del HDFS lo queremos subir...  
 		final String HDFS_POPULATION_FILE= "/user/"+USERNAME+"/input/population.dat";
 		
 		//Hacemos lo mismo con los ficheros de configuracion para los nodos worker...
-		final String LOCAL_MAPPER_CONFIGURATION_FILE="./mapper_configuration.dat";
+		final String LOCAL_GENERAL_PARAMS_FILE= userDir+USERNAME+"/general_params.dat";
 		//Indicamos a que directorio del HDFS lo queremos subir...  
-		final String HDFS_MAPPER_CONFIGURATION_FILE= "/user/"+USERNAME+"/data/mapper_configuration.dat";
+		final String HDFS_GENERAL_PARAMS_FILE= "/user/"+USERNAME+"/data/general_params.dat";
 
-		final String LOCAL_REDUCER_CONFIGURATION_FILE="./reducer_configuration.dat";
-		//Indicamos a que directorio del HDFS lo queremos subir...
-		final String HDFS_REDUCER_CONFIGURATION_FILE="/user/"+USERNAME+"/data/reducer_configuration.dat";
+		final String LOCAL_PROBLEM_PARAMS_FILE= userDir+USERNAME+"/problem_params.dat";
+		final String HDFS_PROBLEM_PARAMS_FILE="/user/"+USERNAME+"/data/problem_params.dat";
 		
 		FileSystem fs = FileSystem.get(cont.getConfiguration());
 		
 		Path hdfsPopPath = new Path(HDFS_POPULATION_FILE);
-		Path hdfsConfMapPath = new Path(HDFS_MAPPER_CONFIGURATION_FILE);
-		Path hdfsConfRedPath = new Path(HDFS_REDUCER_CONFIGURATION_FILE);
+		Path hdfsGeneralParamsPath = new Path(HDFS_GENERAL_PARAMS_FILE);
+		Path hdfsProblemParamsPath = new Path(HDFS_PROBLEM_PARAMS_FILE);
 		
 		//subimos el fichero al HDFS del nodo master. Sobreescribimos cualquier copia.
 		fs.copyFromLocalFile(false, true, new Path(population), hdfsPopPath);
 		//Hacemos lo mismo con los ficheros de configuracion para poder distribuirlos...
-		fs.copyFromLocalFile(false, true, new Path(LOCAL_MAPPER_CONFIGURATION_FILE), hdfsConfMapPath);
-		fs.copyFromLocalFile(false, true, new Path(LOCAL_REDUCER_CONFIGURATION_FILE), hdfsConfRedPath);
+		fs.copyFromLocalFile(false, true, new Path(LOCAL_GENERAL_PARAMS_FILE), hdfsGeneralParamsPath);
+		fs.copyFromLocalFile(false, true, new Path(LOCAL_PROBLEM_PARAMS_FILE), hdfsProblemParamsPath);
 		
 		//Si el elitismo esta presente, creamos el directorio para ir almacenando los mejores individuos de cada iteracion...
 		if (boolElit == 1)
@@ -320,40 +309,26 @@ public class Coordinador implements ICoordinador {
 	}
 
 	@Override
-	public String printBestIndividual(Hashtable hashTable, String numProblem) {
+	public String printBestIndividual(Hashtable hashTable, String bestCritFitness) {
 		Hashtable bestTable = new Hashtable();
 		Enumeration claves = hashTable.keys();
 		//System.out.println("CLAVES VALE "+claves);
-		int fitValue = 0, bestFitness = 0;
-		float fitValFloat = 0, bestFitFloat = 0;
+		double fitValue = 0, bestFitness = 0;
 		
-		//Inicializamos el fitness al del primer individuo...
-		if ((Integer.parseInt(numProblem) == 1)||(Integer.parseInt(numProblem) == 2))
-			bestFitness = (int)Double.parseDouble(hashTable.elements().nextElement().toString());
-		else
-			bestFitFloat = Float.parseFloat(hashTable.elements().nextElement().toString());
+		bestFitness = Double.parseDouble(hashTable.elements().nextElement().toString());
 		
 		while (claves.hasMoreElements())
 		{
 			String clave = (String)claves.nextElement();
 			//System.out.println("LA CLAVE ES "+clave);
-			if ((Integer.parseInt(numProblem)== 1)||(Integer.parseInt(numProblem)== 2))
-			{
-				fitValue = (int)Double.parseDouble(hashTable.get(clave).toString());
-				//System.out.println("EL FITVALUE ES "+fitValue);
-			}
-			else
-				fitValFloat = Float.parseFloat(hashTable.get(clave).toString());
+			fitValue = Double.parseDouble(hashTable.get(clave).toString());
+			//System.out.println("EL FITVALUE ES "+fitValue);
 			
-			//System.out.println("EL VALOR TAL CUAL ES "+hashTable.get(clave).toString());
-			//System.out.println("EL FITVALFLOAT ES "+fitValFloat);
-			//System.out.println("EL FITVALDOUBLE ES "+Double.parseDouble(hashTable.get(clave).toString()));
-				
 			/**
-			 * Si es el problema 'frase objetivo' 
-			 * el mejor fitness sera el m&#224;s pequeño...
+			 * Si el mejor fitness es el mas pequeño...
 			 */
-			if (Integer.parseInt(numProblem) == 1)
+			//System.out.println("EL BESTCRITFITNESS ES "+bestCritFitness);
+			if (bestCritFitness.equals("minor"))
 			{
 				if (fitValue < bestFitness)
 				{
@@ -366,32 +341,18 @@ public class Coordinador implements ICoordinador {
 			}
 			
 			/**
-			 * El resto de los problemas 
-			 * el mejor fitness sera el m&#224;s alto...
+			 * Si el mejor fitness es el mas alto...
 			 */
-			else 
-				if (Integer.parseInt(numProblem) == 3)
-				{
-					if (fitValFloat > bestFitFloat)
-					{
-						bestTable.clear();
-						bestTable.put(clave, fitValFloat);
-						bestFitFloat = fitValFloat;					
-					}
-					else if (fitValFloat == bestFitFloat)
-						bestTable.put(clave, fitValFloat);
-				}
-				else
-				{
-					if (fitValue > bestFitness)
+			else { 
+				if (fitValue > bestFitness)
 					{
 						bestTable.clear();
 						bestTable.put(clave, fitValue);
 						bestFitness = fitValue;					
 					}
-					else if (fitValue == bestFitness)
-						bestTable.put(clave, fitValue);
-				}
+				else if (fitValue == bestFitness)
+					bestTable.put(clave, fitValue);
+			}	
 		}
 		String result ="Se ha producido algún error previo a la impresión de individuos...";
 		if (bestTable.size() == 1)
@@ -403,7 +364,7 @@ public class Coordinador implements ICoordinador {
 	
 
 	@Override
-	public Hashtable generateIndividualsTable(int numReducers, String numProblem) throws IOException {
+	public Hashtable generateIndividualsTable(int numReducers) throws IOException {
 		Hashtable hTable = new Hashtable();
 		FileSystem hdfs = FileSystem.get(new Configuration());
 		Scanner s = null;
@@ -445,8 +406,6 @@ public class Coordinador implements ICoordinador {
 					 * valores double...
 					 */
 					double valor = Double.parseDouble(fitness);
-					if (Integer.parseInt(numProblem)!= 3)
-						valor = (int)valor;
 					hTable.put(keyWord, valor);
 				}
 		    }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+<property><name>targetFitness</name><value>32</value></property>
+<property><name>bestFitness</name><value>major</value></property>
+</configuration>

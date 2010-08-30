@@ -7,16 +7,14 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-
+import common.MRPGAMapper;
 
 /**
  * Clase que representa el nodo Master del sistema <code>MapReduce</code> 
@@ -34,77 +32,46 @@ public class MRPGAMaster extends Configured implements Tool {
 	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
 	 * @param iter Iteraci&#243;na actual del sistema en el que se enmarca esta clase.
 	 */
-	@SuppressWarnings("deprecation")
-	void launch(int numProblem, String iter, int numReducers) {
+
+	void launch(String iter, int numReducers, Class<? extends MRPGAMapper> problemMapperClass, Class<? extends MRPGAReducer> problemReducerClass) {
 		Configuration conf = new Configuration();
 		Job job = null;
 		FileSystem fs = null;
 		try {
 			fs = FileSystem.get(conf);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.err.println("MRPGAMASTER: Error instanciando el HDFS...");
+			System.exit(0);
 		}
 		try {
 			job = new Job(conf, "MRPGA_project");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.err.println("MRPGAMASTER: Error instanciando el trabajo...");
+			System.exit(0);
 		}
 		job.setJarByClass(common.MRPGAMaster.class);
-		
-		switch (numProblem){
-		
-		case 1: //Problema 'Frase Objetivo'
-			System.out.println("MASTER: PROBLEMA FRASE OBJETIVO");
-			job.setMapperClass(targetphrase.TargetPhraseMapper.class);
-			job.setReducerClass(targetphrase.TargetPhraseReducer.class);
-			job.setCombinerClass(targetphrase.TargetPhraseReducer.class);
-			//Especificamos los tipos de salida...
-		    job.setOutputKeyClass(Text.class);
-		    job.setOutputValueClass(IntWritable.class);
-		    job.setPartitionerClass(common.RandomPartitioner.class);
-		    job.setJobName("mrpga-targetphrase-"+iter);
-		    job.setNumReduceTasks(numReducers);
-		    break;
+		job.setNumReduceTasks(numReducers);
+		job.setMapperClass(problemMapperClass);
+		job.setReducerClass(problemReducerClass);
+		job.setCombinerClass(problemReducerClass);
+		//Especificamos los tipos de salida...
+	    job.setOutputKeyClass(Text.class);
+	    job.setOutputValueClass(DoubleWritable.class);
+	    job.setPartitionerClass(common.RandomDoublePartitioner.class);
+	    job.setJobName("mrpga-"+problemReducerClass+iter);
 			
-		case 2: //Problema 'OneMAX'
-			System.out.println("MASTER: PROBLEMA ONEMAX");
-			job.setMapperClass(onemax.OneMAXMapper.class);
-			job.setReducerClass(onemax.OneMAXReducer.class);
-			//job.setCombinerClass(onemax.OneMAXReducer.class);
-			//Especificamos los tipos de salida...
-		    job.setOutputKeyClass(Text.class);
-		    job.setOutputValueClass(DoubleWritable.class);
-		    job.setPartitionerClass(common.RandomDoublePartitioner.class);
-		    job.setJobName("mrpga-onemax-"+iter);
-		    break;
-			
-		case 3: //Problema 'PPeaks'
-			System.out.println("MASTER: PROBLEMA PPEAKS");
-			job.setMapperClass(ppeaks.PPEAKSMapper.class);
-			job.setReducerClass(ppeaks.PPEAKSReducer.class);
-			//job.setCombinerClass(ppeaks.PPEAKSReducer.class);
-			//Especificamos los tipos de salida...
-		    job.setOutputKeyClass(Text.class);
-		    job.setOutputValueClass(DoubleWritable.class);
-		    job.setPartitionerClass(common.RandomDoublePartitioner.class);
-		    job.setJobName("mrpga-ppeaks-"+iter);
-		    break;
-		
-		}
-		
-
 		/*Especificamos los directorios de entrada y salida que van a utilizarse
 	     */
 	    try {
 			FileInputFormat.addInputPath(job, new Path("input"));
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.err.println("MRPGAMASTER:Se ha producido un error leyendo el directorio de entrada...");
+	    	System.exit(0);
 		}
 	    Path outputPath = new Path("output");
-	    //FileSystem fs = FileSystem.get(FileSystem.getDefaultUri(job.getConfiguration()),job.getConfiguration());
 	    
 	    try {
 	    	if (fs.exists(outputPath)) {
@@ -113,8 +80,8 @@ public class MRPGAMaster extends Configured implements Tool {
 	    	}
 	    }
 	    catch (IOException ioe) {
-	    	System.err.println("MASTER:Se ha producido un error borrando los directorios");
-	    	System.exit(1);
+	    	System.err.println("MRPGAMASTER:Se ha producido un error borrando los directorios");
+	    	System.exit(0);
 	    }
  
 	    FileOutputFormat.setOutputPath(job, outputPath);
@@ -122,14 +89,14 @@ public class MRPGAMaster extends Configured implements Tool {
 	    try {
 			job.waitForCompletion(true);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.exit(0);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.exit(0);
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.exit(0);
 		}
 	}
 		
@@ -141,10 +108,11 @@ public class MRPGAMaster extends Configured implements Tool {
 	 * @return C&#243;digo de salida (0-->"Ejecuci&#243;n correcta", -1-->"Error").
 	 */
 	public int run(String[] args) throws Exception {
-		int	numProblem = Integer.parseInt(args[0]);
-		String iter = args[1];
-		int numReducers = Integer.parseInt(args[2]);
-		launch(numProblem, iter, numReducers);
+		String iter = args[0];
+		int numReducers = Integer.parseInt(args[1]);
+		Class<? extends MRPGAMapper> problemMapperClass = (Class<? extends MRPGAMapper>) Class.forName(args[2]);
+		Class<? extends MRPGAReducer> problemReducerClass = (Class<? extends MRPGAReducer>) Class.forName(args[3]);
+		launch(iter, numReducers,problemMapperClass, problemReducerClass);
 		return 0;
 	}
 	

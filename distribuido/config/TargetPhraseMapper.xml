@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+<property><name>targetPhrase</name><value>Good Bye, world!</value></property>
+<property><name>targetFitness</name><value>0</value></property>
+<property><name>bestFitness</name><value>minor</value></property>
+</configuration>
