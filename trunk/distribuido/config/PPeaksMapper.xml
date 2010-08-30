@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+<property><name>targetFitness</name><value>1</value></property>
+<property><name>bestFitness</name><value>major</value></property>
+<property><name>peaks_number</name><value>200</value></property>
+</configuration>
