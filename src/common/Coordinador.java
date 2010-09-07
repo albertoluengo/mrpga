@@ -3,12 +3,9 @@ package common;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Scanner;
-import java.util.Vector;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -18,7 +15,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.pig.backend.executionengine.ExecException;
 
-import problems.*;
 
 
 /**
@@ -59,7 +55,7 @@ public class Coordinador implements ICoordinador {
 	 * @throws IOException Excepci&#243;n lanzada al haber alg&#250;n problema manipulando
 	 * ficheros o directorios.
 	 */
-	private void regenDirs(FileSystem fs) throws IOException {
+	private void regenIODirs(FileSystem fs) throws IOException {
 		Path outputPath = new Path("output");
 		Path inputPath = new Path("input");
 		Path dataPath = new Path("data");
@@ -73,6 +69,7 @@ public class Coordinador implements ICoordinador {
 	    	}
 	    catch (IOException ioe) {
 	    	System.err.println("COORD:Se ha producido un error borrando el dir de salida!");
+	    	System.err.println("COORD:Se aborta la ejecución...");
 	    	System.exit(1);
 	    }
 	    
@@ -83,6 +80,7 @@ public class Coordinador implements ICoordinador {
 	    	}
 	    catch (IOException ioe) {
 	    	System.err.println("COORD:Se ha producido un error borrando el dir de entrada!");
+	    	System.err.println("COORD:Se aborta la ejecución...");
 	    	System.exit(1);
 	    }
 	    
@@ -93,6 +91,7 @@ public class Coordinador implements ICoordinador {
 	    	}
 	    catch (IOException ioe) {
 	    	System.err.println("COORD:Se ha producido un error borrando el dir de data!");
+	    	System.err.println("COORD:Se aborta la ejecución...");
 	    	System.exit(1);
 	    }
 	    
@@ -103,6 +102,7 @@ public class Coordinador implements ICoordinador {
 	    	}
 	    catch (IOException ioe) {
 	    	System.err.println("COORD:Se ha producido un error borrando el dir de bestInd!");
+	    	System.err.println("COORD:Se aborta la ejecución...");
 	    	System.exit(1);
 	    }
 	    
@@ -113,14 +113,12 @@ public class Coordinador implements ICoordinador {
 	    	}
 	    catch (IOException ioe) {
 	    	System.err.println("COORD:Se ha producido un error borrando el dir de oldPops!");
+	    	System.err.println("COORD:Se aborta la ejecución...");
 	    	System.exit(1);
 	    }    
 	    
 	}
 	
-	
-	
-	@SuppressWarnings("static-access")
 	@Override
 	public String readFromClientAndIterate(int numPop, int numReducers, int maxiter, int debug, int boolElit, String problemName, String reducerName, int endCriterial, int gene_number, Hashtable configValues, String userDir) throws IOException, ExecException, Exception {
 		
@@ -135,7 +133,7 @@ public class Coordinador implements ICoordinador {
 		String bestCritFitness = configValues.get("bestFitness").toString();
 		
 		//Lo primero que tiene hacer el Coordinador es regenerar la estructura de dirs...
-		this.regenDirs(fs);
+		this.regenIODirs(fs);
 		
 		String oldPopString = "/user/"+USERNAME+"/oldPopulations";
 		Path oldPopulationsDirPath = new Path (oldPopString);
@@ -148,18 +146,16 @@ public class Coordinador implements ICoordinador {
 			
 		for (int i=0; i<maxiter; i++) 
 		{
-			
+			final long startTime = System.currentTimeMillis();
 			/**Si es la primera iteracion, subiremos la poblacion inicial, sino la de los
-			 * descendientes. Si no es la primera iteracion tendra que ejecutar el codigo Pig para
-		     * saber cual es la poblacion optima de la iteracion, almacenandola ya en el master... 
-			 */
+			 * descendientes */
 			String currPopString = "/user/"+USERNAME+"/input/population_"+i+".dat";
 			Path currentPopulationFilePath = new Path (currPopString);
 			
 			//Si es la primera iteracion, leemos el fichero localmente...
 			if (i==0) this.uploadToHDFS(jCont, localPopulationFile.toString(),boolElit,userDir);		
 			
-			//Instancio dinámicamente las clases necesarias con Reflection...
+			//Instancio dinámicamente las clases necesarias para el trabajo MapReduce...
 			Class <? extends MRPGAMapper> problem_map_class;
 			Class <? extends MRPGAReducer> problem_reducer_class;
 			String map_class_name = "problems."+problemName;
@@ -191,13 +187,13 @@ public class Coordinador implements ICoordinador {
 				System.out.println("COORDINADOR["+problemName+"]: EN LA ITERACION "+i+" NO SE ENCUENTRA EL INDIVIDUO OBJETIVO");
 			
 			
-			System.out.println("COORDINADOR["+i+"]: Comienza el script de Pig");
-			PigFunction pigFun = new PigFunction();
+			System.out.println("COORDINADOR["+i+"]: COMIENZA EL SCRIPT DE PIG");
+			PigNode pigFun = new PigNode();
 			args2[0] = i+"";
 			args2[1] = numReducers+"";
 			args2[2] = USERNAME;
 			pigFun.main(args2);
-			System.out.println("COORDINADOR["+i+"]: Acaba el script de Pig");
+			System.out.println("COORDINADOR["+i+"]: ACABA EL SCRIPT DE PIG");
 			
 			/**
 			 * Si el par&#224;metro "debug" est&#224; activado, vamos a crear un directorio nuevo en el que se van a ir colocando
@@ -239,36 +235,37 @@ public class Coordinador implements ICoordinador {
 					fs.delete(new Path(prevPopString), true);
 				}
 			}
+			//Imprimimos el tiempo de la iteración...
+			final double duration = (System.currentTimeMillis() - startTime)/1000.0;
+		    System.out.println("COORDINADOR["+i+"]:TIEMPO DE LA ITERACIÓN " + duration + " segundos");
 		}
 		//Imprimimos el(los) mejor(es) individuo(s) que hayamos encontrado...
 		System.out.println("COORDINADOR: IMPRESIÓN DEL(DE LOS) MEJOR(ES) INDIVIDUO(S)...");
-		
 		bestIndividual = printBestIndividual(hTable,bestCritFitness);
-		//System.out.println("COORDINADOR: Acabo de imprimir el mejor individuo...");
 	return bestIndividual;
 	}
 
 	
-	@Override
-	public void replacePopulationFile(Path originalPop, Path actualPopPath) throws IOException {
-		//
-		Configuration conf = new Configuration();
-		FileSystem fs = FileSystem.get(conf);
-		//Path populationPath = new Path("input/population.txt");
-		//System.out.println("COORDINADOR: Dentro del replaceFile el originalPop es "+originalPop+" y el actualPop es "+actualPopPath);
-		
-	    try {
-	    	if (fs.exists(originalPop)) {
-	    		//remove the file first
-	    		fs.delete(originalPop,true);
-	    		fs.rename(actualPopPath, hdfsPopulationPath);
-	    	}
-	    }
-	    catch (IOException ioe) {
-	    	System.err.println("COORDINADOR: Se ha producido un error reemplazando los ficheros");
-	    	System.exit(1);
-	    }
-	}
+//	@Override
+//	public void replacePopulationFile(Path originalPop, Path actualPopPath) throws IOException {
+//		//
+//		Configuration conf = new Configuration();
+//		FileSystem fs = FileSystem.get(conf);
+//		//Path populationPath = new Path("input/population.txt");
+//		//System.out.println("COORDINADOR: Dentro del replaceFile el originalPop es "+originalPop+" y el actualPop es "+actualPopPath);
+//		
+//	    try {
+//	    	if (fs.exists(originalPop)) {
+//	    		//remove the file first
+//	    		fs.delete(originalPop,true);
+//	    		fs.rename(actualPopPath, hdfsPopulationPath);
+//	    	}
+//	    }
+//	    catch (IOException ioe) {
+//	    	System.err.println("COORDINADOR: Se ha producido un error reemplazando los ficheros");
+//	    	System.exit(1);
+//	    }
+//	}
 
 	
 	@Override
@@ -302,10 +299,6 @@ public class Coordinador implements ICoordinador {
 			String bestIndString = "/user/"+USERNAME+"/bestIndividuals";
 			fs.mkdirs(new Path(bestIndString));
 		}
-		
-		//Mandamos el fichero de configuracion a todos los nodos...
-		//DistributedCache.addCacheFile(hdfsConfMapPath.toUri(),cont.getConfiguration());
-		//DistributedCache.addCacheFile(hdfsConfRedPath.toUri(),cont.getConfiguration());
 	}
 
 	@Override
@@ -320,14 +313,11 @@ public class Coordinador implements ICoordinador {
 		while (claves.hasMoreElements())
 		{
 			String clave = (String)claves.nextElement();
-			//System.out.println("LA CLAVE ES "+clave);
 			fitValue = Double.parseDouble(hashTable.get(clave).toString());
-			//System.out.println("EL FITVALUE ES "+fitValue);
 			
 			/**
 			 * Si el mejor fitness es el mas pequeño...
 			 */
-			//System.out.println("EL BESTCRITFITNESS ES "+bestCritFitness);
 			if (bestCritFitness.equals("minor"))
 			{
 				if (fitValue < bestFitness)
@@ -354,11 +344,11 @@ public class Coordinador implements ICoordinador {
 					bestTable.put(clave, fitValue);
 			}	
 		}
-		String result ="Se ha producido algún error previo a la impresión de individuos...";
+		String result ="COORDINADOR: Se ha producido algún error previo a la impresión de individuos...";
 		if (bestTable.size() == 1)
-			result = "El mejor individuo encontrado es: "+bestTable;
+			result = "COORDINADOR: El mejor individuo encontrado es: "+bestTable;
 		else
-			result = "Los mejores individuos encontrados son: "+bestTable;
+			result = "COORDINADOR: Los mejores individuos encontrados son: "+bestTable;
 		return result;
 	}
 	

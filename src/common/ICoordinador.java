@@ -58,7 +58,7 @@ public interface ICoordinador {
 	 * @param actual Ruta a la poblaci&#243;n "actual" dentro del HDFS.
 	 * @throws IOException Excepci&#243;n lanzada si existe alg&#250;n problema manipulando directorios o ficheros.
 	 */
-	public void replacePopulationFile(Path original, Path actual) throws IOException;
+	//public void replacePopulationFile(Path original, Path actual) throws IOException;
 	
 	/**
 	 * M&#233;todo que lee los registros de una tabla Hash y los procesa para buscar

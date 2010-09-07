@@ -1,23 +1,51 @@
-<project>
-	<target name="clean">
-		<delete file="mrpga.jar"/>
-		<delete dir="build/" />
-		<delete dir="bin/" />
-		<delete dir="docs/" />
-	</target>
-
-	<property name="lib.hadoop.pig.dir" value="lib" />
-
+<project name="MRPGA Project" basedir=".">
+	<description>
+		MRPGA project build file
+    </description>
+	
+	<!-- set global properties for this build -->
+	<property name="build" location="build"/>
+	<property name="src" location="src"/>
+	<property name="lib.hadoop.pig.dir" location="lib"/>
+	<property name="config.dir" location="config"/>
+	
 	<path id="classpath">
 		<fileset dir="${lib.hadoop.pig.dir}" includes="**/*.jar"/>
 	</path>
-
-	<target name="compile">
-		<mkdir dir="build/classes"/>
-		<javac srcdir="src" destdir="build/classes" classpathref="classpath" encoding="utf-8"/>
+	
+	<target name="init">
+	    <!-- Create the build directory structure used by compile -->
+	    <mkdir dir="${build}"/>
+		<mkdir dir="${build}/classes"/>
+		<mkdir dir="${build}/config"/>
+	 </target>
+	
+	<target name="compile" depends="init" description="compile source files">
+		<!-- Compile the java code from ${src} into ${build} -->
+		<javac srcdir="${src}" destdir="${build}/classes" classpathref="classpath" encoding="utf-8"/>
 	</target>
 	
-	<target name="javadoc">
+	<target name="jar" depends="compile" description="Make MRPGA jar.">
+		<!-- Copy configuration directory -->
+		<copy todir="${build}/config">
+      		<fileset dir="${config.dir}"/>
+		</copy>
+		<!-- Put everything in ${build} into the mrpga_cluster.jar file -->
+		<jar destfile="mrpga_cluster.jar" basedir="${build}">
+			<manifest>
+				<attribute name="Main-Class" value="common.Cliente"/>
+			</manifest>
+		</jar>
+	</target>
+
+	
+	<target name="clean" description="clean up">
+		<!-- Delete the ${build} and ${dist} directory trees -->
+		<delete dir="${build}"/>
+	</target>
+
+	
+	<target name="javadoc" description="generate JavaDoc">
 	      <javadoc sourcepath="src" 
 	      	       packagenames="*"
 	      		   destdir="docs/api"
@@ -28,21 +56,14 @@
 	      	       classpathref="classpath"
 	      	       windowtitle="MRPGA API">
 	      	    <doctitle><![CDATA[<h1>Welcome to MRPGA API</h1>]]></doctitle>
-	      	    <bottom><![CDATA[<i>Copyright &#169; 2010 Universidade de A Coru&#241;a. All Rights Reserved.</i>]]></bottom>
+	      	    <bottom><![CDATA[<i>Copyright &#169; 2009-2010 Universidade de A Coru&#241;a. All Rights Reserved.</i>]]></bottom>
 	      	    <link offline="true" href="http://java.sun.com/javase/6/docs/api/" packagelistLoc="C:/tmp"/>
 	      	    <link href="http://java.sun.com/javase/6/docs/api/"/>
            </javadoc>
     </target>
 
-	<target name="jar" description="Make MRPGA jar.">
-		<jar destfile="mrpga.jar" basedir="build/classes">
-			<manifest>
-				<attribute name="Main-Class" value="common.Cliente"/>
-			</manifest>
-		</jar>
-	</target>
 	
-	<target name="all" depends="clean, compile, jar, javadoc">
+	<target name="all" depends="clean, jar, javadoc" description="execute all targets">
     </target>
 
 </project>

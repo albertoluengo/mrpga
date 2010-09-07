@@ -179,14 +179,9 @@ public abstract class MRPGAReducer extends Reducer<Text,DoubleWritable,Text,Doub
 	public void reduce(Text key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException 
 	{
 		Iterator<DoubleWritable> valuesIter =values.iterator();
-		//LOG.info("VALUES ITERATOR VALE "+valuesIter.toString());
 		while (valuesIter.hasNext()) 
 		{
 			fitness = valuesIter.next();
-			//LOG.info("****EL INDIVIDUO "+numElemProcessed+" TIENE CLAVE "+key.toString());
-			
-//			tournIndiv[numElemProcessed%tournamentSize + tournamentSize] = key.toString();
-//			tournamentFitness[numElemProcessed%tournamentSize + tournamentSize] = fitness.get();
 			tournIndiv[numElemProcessed%tournamentSize] = key.toString();
 			tournamentFitness[numElemProcessed%tournamentSize] = fitness.get();
 			
@@ -357,7 +352,7 @@ public abstract class MRPGAReducer extends Reducer<Text,DoubleWritable,Text,Doub
 		//LOG.info("DENTRO DE SELECTIONANDCROSSOVER EL GANADOR DEL TORNEO ES " +tournWinner);
 		if (((numElemProcessed - tournamentSize) % crossSize) == (crossSize - 1) && (bufferWinners.size() <= numPop)) 
 		{
-			if (r.nextDouble() < crossProb)
+			if (r.nextDouble() > crossProb)
 				try {
 					newIndividuals = crossOver(reduceParameters, problemConfigParameters, crossArray);
 				}catch (Exception e) {
