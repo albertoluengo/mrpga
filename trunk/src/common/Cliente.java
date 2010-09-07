@@ -1,12 +1,13 @@
 package common;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Arrays;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Hashtable;
-import java.util.Random;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -14,7 +15,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-import java.io.File;
 import org.w3c.dom.*;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -31,40 +31,71 @@ import org.xml.sax.SAXParseException;
  */
 public class Cliente extends Configured implements Tool {
 
-	private static Hashtable parseXMLFile(String userName, String userDir,String problemName){
-    	Hashtable configValues = new Hashtable();
-    	String configLine="";
-    	//Instanciamos el fichero...
-		String sFile ="problem_params.dat";
-		File initPop = new File(userDir+userName,sFile);
+	
+	private static void createDirsAndFiles(String problemFile,String userDir,String userName) throws IOException {
+		//Instanciamos el fichero...
+		File initDir = new File(userDir).getCanonicalFile();
+		File userDirFile = new File(initDir.getPath()+"/"+userName);
+		File initPop = new File(userDirFile+"/"+problemFile);
+		boolean created_dir = false, created_file = false;
 		//Miramos si existe...
-		if (initPop.exists()){
-			System.out.println("CLIENTE: Regenerando fichero de parametros del problema...");
+		created_dir = initPop.exists();
+		if (created_dir){
+			System.out.println("CLIENTE: Regenerando fichero "+problemFile+"...");
 			initPop.delete();
+			created_file = initPop.createNewFile();
 		}
 		else
 		{
-			//Creamos el fichero....
-			try {
-				// A partir del objeto File creamos el fichero fisicamente
-				if (initPop.createNewFile())
-				{
-					System.out.println("CLIENTE:El fichero de parametros del problema ha sido creado correctamente!");
-					Runtime.getRuntime().exec("chmod 777 " +userDir+userName+"/problem_params.dat");
-				}
-				else
-					System.out.println("CLIENTE:El fichero de parametros del problema no ha podido ser creado...");
-			}catch (IOException e){
-				e.printStackTrace();
+			//Creamos el directorio y el fichero....
+			if (!userDirFile.exists()){
+				created_dir = userDirFile.mkdir();
+				created_file = initPop.createNewFile();
 			}
+			else {
+				created_dir = true;
+				created_file = initPop.createNewFile();
+			}
+		}
+		try {
+			// A partir del objeto File creamos el fichero fisicamente
+			if (created_dir && created_file)
+			{
+				System.out.println("CLIENTE: El fichero "+problemFile+" ha sido creado correctamente!");
+				Runtime.getRuntime().exec("chmod 777 " +userDir+userName+"/"+problemFile);
+			}
+			else
+			{
+				System.err.println("CLIENTE: El fichero "+problemFile+" no ha podido ser creado...");
+				System.exit(0);
+			}
+		}catch (IOException e){
+			System.err.println("CLIENTE: El fichero "+problemFile+" no ha podido ser creado...");
+			System.err.println("Código de error: "+ e.getLocalizedMessage());
+			System.exit(0);
+		}	
+	}
+	
+	private static Hashtable parseXMLFile(String userName, String userDir,String xmlName) throws IOException{
+    	Hashtable configValues = new Hashtable();
+    	String configLine="";
+    	String problem_file="problem_params.dat";
+		try {
+			createDirsAndFiles(problem_file,userDir,userName);
+		} catch (IOException e1) {
+			System.err.println("CLIENTE:El fichero de parámetros del problema no ha podido ser creado...");
+			System.err.println("Código de error: "+ e1.getLocalizedMessage());
+			System.exit(0);
 		}
     	
     	try {	
-    		BufferedWriter bw= new BufferedWriter(new FileWriter(userDir+userName+"/problem_params.dat"));
-			System.out.println("CLIENTE: Escribiendo en fichero de parametros del problema...");
+    		BufferedWriter bw= new BufferedWriter(new FileWriter(userDir+userName+"/"+problem_file));
+			System.out.println("CLIENTE: Escribiendo en fichero de parámetros del problema...");
             DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
-            Document doc = docBuilder.parse (new File("config/"+problemName+".xml"));
+            //¡OJO!Descomentar esta linea si se esta en modo depuracion y no se ha generado el JAR
+            //Document doc = docBuilder.parse (new File("config/"+xmlName+".xml"));
+            Document doc = docBuilder.parse(Cliente.class.getResourceAsStream("/config/"+xmlName+".xml"));
             //Normalizamos la representación del texto...
             doc.getDocumentElement().normalize();
             NodeList listOfProperties = doc.getElementsByTagName("property");
@@ -130,85 +161,38 @@ public class Cliente extends Configured implements Tool {
       return configValues;
     }
 	
-	/**
-	 * M&#233;todo privado que genera un String compuesto de caracteres alfanum&#233;ricos, elegidos de forma aleatoria, y de longitud la del String
-	 * que se le pasa por par&#225;metro.
-	 * @param target Cadena que se utilizar&#225; para calcular la longitud del String a generar.
-	 * @return Cadena de texto alfanum&#233;rica compuesta por caracteres generados aleatoriamente.
-	 */
-	private static String generateRandomString(int geneNumber, String chromKind) {
-			String individuo = "";
-			Random r = new Random(System.nanoTime());
-			char spanish_chars[]={'!','¡','.','¿','?','_',',',';','á','é','í','ó','ú'};
-			Arrays.sort(spanish_chars);
-			int cont=0;
-			double prob =0.0;
-			if (chromKind.equals("binary"))
-				while (cont < geneNumber)
-				{
-					prob = java.lang.Math.random();
-					if ((prob <= 0.5))
-						individuo += '0';
-					else
-						individuo += '1';
-					cont ++;
-				}
-			else
-				while ( cont < geneNumber){
-					char c = (char)r.nextInt(255);
-					//position = Arrays.binarySearch(spanish_chars, c);
-					if((c>='0' && c<='9') || (c>='a' && c<='z') || (c>='A' && c<='Z'))
-					{
-						individuo += c;
-						cont ++;
-					}
-				}
-			return individuo;
-			}
-	
-	
+
 	/**
 	 * M&#233;todo privado que genera el fichero con la poblaci&#243;n inicial de individuos a procesar por el sistema.
 	 * @param target Frase objetivo a conseguir (aplicable para el problema "TargetPhrase")
 	 * @param sizePop N&#250;mero entero que indica el tama&#209;o de las poblaciones a procesar
 	 * @param geneNumber Longitud (entera) de los individuos que componen las poblaciones a procesar.
-	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS")
+	 * @param chromClass Clase de cromosomas que utiliza el sistema.
 	 * @param userDir Directorio personal del usuario que ejecuta la aplicacion
 	 */
-	private static void generatePopulationFile(String userName, int sizePop, int geneNumber, String chromKind, String userDir) {
-		//Instanciamos el fichero...
-		String sFile ="population.dat";
-		File initPop = new File(userDir+userName,sFile);
-		//Miramos si existe...
-		if (initPop.exists()){
-			System.out.println("CLIENTE: Regenerando fichero de poblacion...");
-			initPop.delete();
+	private static void generatePopulationFile(String userName, int sizePop, int geneNumber, String chromClass, String userDir) {
+		String population_file="population.dat";
+		try {
+			createDirsAndFiles(population_file,userDir,userName);
+		} catch (IOException e1) {
+			System.err.println("CLIENTE:El fichero de población del problema no ha podido ser creado...");
+			System.err.println("Código de error: "+ e1.getLocalizedMessage());
+			System.exit(0);
 		}
-		else
-		{
-			//Creamos el fichero....
-			try {
-				// A partir del objeto File creamos el fichero fisicamente
-				if (initPop.createNewFile())
-				{
-					System.out.println("CLIENTE: El fichero de poblacion ha sido creado correctamente!");
-					Runtime.getRuntime().exec("chmod 777 " +userDir+userName+"/population.dat");
-				}
-				else
-					System.out.println("CLIENTE: El fichero de poblacion no ha podido ser creado...");
-			}catch (IOException e){
-				e.printStackTrace();
-			}
-		}
-		
 		//Escribimos en el fichero previamente creado...
 		try {
-			BufferedWriter bw= new BufferedWriter(new FileWriter(userDir+userName+"/population.dat"));
+			BufferedWriter bw= new BufferedWriter(new FileWriter(userDir+userName+"/"+population_file));
 			System.out.println("CLIENTE: Escribiendo en fichero de poblacion...");
 			String word="";
 			int i=0;
+			//Instancio dinámicamente las clases necesarias para el trabajo MapReduce...
+			Class <? extends Chromosome> problem_chrom_class;
+			String chrom_class_name = "common."+chromClass;
+			problem_chrom_class = (Class <? extends Chromosome>)Class.forName(chrom_class_name);
+			Chromosome chromInst = problem_chrom_class.newInstance();	
+			
 			while (i <sizePop) {
-				word=generateRandomString(geneNumber, chromKind);
+				word= chromInst.generate(geneNumber);
 				//Escribimos a fichero...	
 				bw.write(word +"\n");
 				i++;
@@ -216,7 +200,23 @@ public class Cliente extends Configured implements Tool {
 			//Cerramos el fichero
 			System.out.println("CLIENTE: Cerrando fichero de poblacion...");
 			bw.close();
-		} catch (IOException e){e.printStackTrace();}
+		}catch (IOException e){
+			System.err.println("CLIENTE: Error instanciando la clase de cromosomas. Se cierra el programa...");   
+			e.printStackTrace();
+			System.exit(0); 
+		}catch (InstantiationException e) {
+			System.err.println("CLIENTE: Error instanciando la clase de cromosomas. Se cierra el programa...");   
+			e.printStackTrace();
+			System.exit(0);
+		} catch (IllegalAccessException e) {
+			System.err.println("CLIENTE: Error accediendo a la clase de cromosomas. Se cierra el programa...");
+			e.printStackTrace();
+			System.exit(0);
+		} catch (ClassNotFoundException e) {
+			System.err.println("CLIENTE:No se ha encontrado la clase de cromosomas a instanciar. Se cierra el programa...");
+			e.printStackTrace();
+			System.exit(0);
+		}
 	}
 	
 	
@@ -225,32 +225,18 @@ public class Cliente extends Configured implements Tool {
 			int mutation, double mutationrate, double crossProb,int debug, 
 			int tournWindow, int endCriterial, String userDir, String userName) {
 	
-		//Instanciamos el fichero...
-		String sFile ="general_params.dat";
-		File initPop = new File(userDir+userName,sFile);
-		//Miramos si existe...
-		if (initPop.exists()){
-			System.out.println("CLIENTE: Regenerando fichero de configuracion general...");
-			initPop.delete();
+		String general_params="general_params.dat";
+		try {
+			createDirsAndFiles(general_params,userDir,userName);
+		} catch (IOException e1) {
+			System.err.println("CLIENTE: El fichero de configuración general no ha podido ser creado...");
+			System.err.println("Código de error: "+ e1.getLocalizedMessage());
+			System.exit(0);
 		}
-		else
-		{
-			//Creamos el fichero....
-			try {
-				// A partir del objeto File creamos el fichero fisicamente
-				if (initPop.createNewFile()){
-					System.out.println("CLIENTE: El fichero de configuracion general ha sido creado correctamente!");
-					Runtime.getRuntime().exec("chmod 777 " +userDir+userName+"/general_params.dat");
-				}
-				else
-					System.out.println("CLIENTE: El fichero de configuracion general no ha podido ser creado...");
-			}catch (IOException e){
-				e.printStackTrace();
-			}
-		}
+		
 		//Escribimos en el fichero previamente creado
 		try {
-			BufferedWriter bw= new BufferedWriter(new FileWriter(userDir+userName+"/general_params.dat"));
+			BufferedWriter bw= new BufferedWriter(new FileWriter(userDir+userName+"/"+general_params));
 			System.out.println("CLIENTE: Escribiendo en fichero de configuracion general...");
 			bw.write("numReducers:"+numReducers+"\r\n");
 			bw.write("numIterations:"+numIterations +"\r\n");
@@ -277,19 +263,24 @@ public class Cliente extends Configured implements Tool {
 	/**
 	 * M&#233;todo que inicia el sistema <code>MRPGA</code>, obteniendo la configuraci&#243;n necesaria del HDFS subyacente
 	 * (par&#225;metros, sistemas de ficheros,etc).
-	 * @param numProblem N&#250;mero que indica el n&#250;mero de problema a ejecutar (1-->"TargetPhrase", 2-->"OneMAX", 3-->"PPEAKS").
-	 * @param numReducers @param numReducers N&#250;mero de tareas <code>Reducer</code> que lanzar&#225; el trabajo <code>MapReduce</code>
+	 * @param mapperName Nombre de la clase Mapper del problema a resolver especificada por el usuario.
+	 * @param reducerName Nombre de la clase Reducer del problema a resolver especificada por el usuario.
+	 * @param xmlName Nombre del fichero de configuración XML con los par&#225;metros espec&#237;ficos del problema a resolver.
+	 * @param numReducers N&#250;mero de tareas <code>Reducer</code> que lanzar&#225; el trabajo <code>MapReduce</code>
 	 * @param maxIter N&#250;mero m&#225;ximo de iteraciones por las que va a atravesar el sistema.
 	 * @param population Tama&#209;o (entero) de la poblaci&#243;n a procesar.
-	 * @param geneNumber Longitud de los individuos de las poblaciones a procesar (no aplicable al problema <code>TargetPhrase</code>).
+	 * @param geneNumber Longitud de los individuos de las poblaciones a procesar.
+	 * @param chromKind Codificaci&#243;n elegida para los individuos ("binary"-->binaria, "others"-->alfanumerica).
 	 * @param crossProb Probabilidad de cruce entre dos individuos de una misma poblacion.
 	 * @param boolElit N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si se introduce elitismo o no en la generaci&#243;n de descendencia.
 	 * @param mutation N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si se introduce mutaci&#243;n o no en la generaci&#243;n de descendencia.
+	 * @param mutationRate Probabilidad de mutaci&#243; de un individuo
+	 * @param tournWindow N&#250;mero de participantes en el torneo de selecci&#243;n de la fase 'Reduce'.
 	 * @param debug N&#250;mero entero (1-->"S&#237;", 0-->"No") que indica si interesa guardar un hist&#243;rico de poblaciones procesadas en un directorio 'oldPopulations' del HDFS.
 	 * @param endCriterial N&#250;mero entero (0-->"Por Iteraciones", 1-->"Por Objetivo") que indica la forma de terminaci&#243;n del algoritmo.
 	 * @param userDir Directorio personal del usuario.
 	 */
-	void launch(String problemName, String reducerName, int numReducers, int maxIter, int population, int geneNumber, String chromKind, double crossProb, int boolElit, int mutation, double mutationRate, int tournWindow, int debug, int endCriterial, String userDir) {
+	void launch(String mapperName, String reducerName, String xmlName, int numReducers, int maxIter, int population, int geneNumber, String chromClass, double crossProb, int boolElit, int mutation, double mutationRate, int tournWindow, int debug, int endCriterial, String userDir) {
 		
 		Hashtable configValues = new Hashtable();
 		Configuration conf = new Configuration();
@@ -297,7 +288,6 @@ public class Cliente extends Configured implements Tool {
 		try {
 			fs = FileSystem.get(conf);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		String users = conf.get("hadoop.job.ugi");
@@ -313,25 +303,32 @@ public class Cliente extends Configured implements Tool {
 		//por arriba, para una distribución equitativa...
 		while(population%numMappers !=0)
 			population++;
-		//¡¡¡¡¡OJO!!!!CAMBIAR!!!!
-		//int popPerMapper = (population / numMappers);
-		int popPerMapper = population;
+		
+		int popPerMapper = (population / numMappers);
 		
 		
 		/**
 		 * PASO 1.- Miramos si el problema tiene parametros de configuracion especificos,
 		 * parseando el XML correspondiente
 		 */
-		configValues = parseXMLFile(userName, userDir, problemName);
+		try{
+			configValues = parseXMLFile(userName, userDir, xmlName);
+		}catch (IOException ie)
+		{
+			System.err.println("CLIENTE: Ha habido un problema de I/O leyendo el fichero de config. XML");
+			System.err.println("CODIGO DE ERROR: "+ie.getLocalizedMessage());
+			System.exit(0);
+		}
 		
 		/**
 		 * PASO 2.- Generamos la poblacion inicial y los ficheros de configuracion 
 		 * para los nodos Worker... 
 		 */
-		generatePopulationFile(userName,population,geneNumber,chromKind, userDir);
+		
+		generatePopulationFile(userName,population,geneNumber,chromClass, userDir);
 		
 		generateGeneralConfigurationFile(numReducers, maxIter,population, popPerMapper, 
-				geneNumber, chromKind, boolElit, mutation, mutationRate, crossProb, 
+				geneNumber, chromClass, boolElit, mutation, mutationRate, crossProb, 
 				debug, tournWindow, endCriterial, userDir, userName);
 		
 		
@@ -340,22 +337,26 @@ public class Cliente extends Configured implements Tool {
 		 * PASO 3.- El coordinador realizara las iteraciones pertinentes y devolvera el resultado buscado...
 		 */
 		System.out.println("CLIENTE: Lanzando trabajo...");
-        final long startTime = System.currentTimeMillis();
 		try {
-			result = coord.readFromClientAndIterate(population, numReducers, maxIter, debug, boolElit, problemName, reducerName, endCriterial, geneNumber, configValues, userDir);
+			final long startTime = System.currentTimeMillis();
+			result = coord.readFromClientAndIterate(population, numReducers, maxIter, debug, boolElit, mapperName, reducerName, endCriterial, geneNumber, configValues, userDir);
+			/**
+			 * PASO 3.- El cliente imprime el resultado del procesado de individuos...
+			 */
+			System.out.println("CLIENTE: "+ result);
+			final double duration = (System.currentTimeMillis() - startTime)/1000.0;
+		    System.out.println("CLIENTE: Trabajo finalizado en " + duration + " segundos");
+			System.out.println("****FIN DE EJECUCION****");
+			System.exit(1);
 		} catch (IOException e) {
 			System.err.println("CLIENTE: Se ha producido un error de I/O en la conexion al HDFS");
+			System.err.println("CÓDIGO DE ERROR: "+e.getLocalizedMessage());
+			System.exit(0);
 		}catch (Exception e) {
 			System.err.println("CLIENTE: Se ha producido un error generico ejecutando el codigo del Master");
+			System.err.println("CÓDIGO DE ERROR: "+e.getLocalizedMessage());
+			System.exit(0);
 		}
-		/**
-		 * PASO 3.- El cliente imprime el resultado del procesado de individuos...
-		 */
-		System.out.println("CLIENTE: "+ result);
-		final double duration = (System.currentTimeMillis() - startTime)/1000.0;
-	    System.out.println("CLIENTE: Trabajo finalizado en " + duration + " segundos");
-		System.out.println("****FIN DE EJECUCION****");
-		
 	}
 
 	/**
@@ -367,9 +368,9 @@ public class Cliente extends Configured implements Tool {
 	 */
 	@Override
 	public int run(String[] args) throws Exception {
-		if (args.length < 15) {
+		if (args.length < 16) {
 			System.err.println("***********************************");
-			System.err.println("Uso: hadoop jar mrpga.jar <mapperName> <reducerName> <nReducers> <nIterations> <sizePop> <geneNumber> <chromKind> <crossProb> <boolElit> <mutation> <mutationRate> <tournWindow> <debug> <endCriterial> <user_dir>");
+			System.err.println("Uso: hadoop jar mrpga.jar <mapperName> <reducerName> <xmlName> <nReducers> <nIterations> <sizePop> <geneNumber> <chromKind> <crossProb> <boolElit> <mutation> <mutationRate> <tournWindow> <debug> <endCriterial> <user_dir>");
 			System.err.println("***********************************");
 			ToolRunner.printGenericCommandUsage(System.err);
 			System.err.println("***********************************");
@@ -379,34 +380,36 @@ public class Cliente extends Configured implements Tool {
 		System.out.println("MAPPER CLASS NAME: "+problemName);
 		String reducerName = args[1];
 		System.out.println("REDUCER CLASS NAME: "+reducerName);
-		int	numReducers = Integer.parseInt(args[2]);
+		String xmlName = args[2];
+		System.out.println("XML CONFIG FILE NAME: "+xmlName);
+		int	numReducers = Integer.parseInt(args[3]);
 		System.out.println("NUM REDUCERS: "+numReducers);
-		int	numIterations = Integer.parseInt(args[3]);
+		int	numIterations = Integer.parseInt(args[4]);
 		System.out.println("NUM ITERATIONS: "+numIterations);
-		int sizePop = Integer.parseInt(args[4]);
+		int sizePop = Integer.parseInt(args[5]);
 		System.out.println("POPULATION: "+sizePop);
-		int geneNumber = Integer.parseInt(args[5]);
+		int geneNumber = Integer.parseInt(args[6]);
 		System.out.println("GENE NUMBER: "+geneNumber);
-		String chromKind = args[6];
-		System.out.println("CHROM KIND: "+chromKind);
-		double crossProb = Double.parseDouble(args[7]);
+		String chromClass = args[7];
+		System.out.println("CHROM CLASS: "+chromClass);
+		double crossProb = Double.parseDouble(args[8]);
 		System.out.println("CROSSPROB: "+crossProb);
-		int boolElit = Integer.parseInt(args[8]);
+		int boolElit = Integer.parseInt(args[9]);
 		System.out.println("ELITISM?: "+boolElit);
-		int mutation = Integer.parseInt(args[9]);
+		int mutation = Integer.parseInt(args[10]);
 		System.out.println("MUTATION?: "+mutation);
-		double mutationRate = Double.parseDouble(args[10]);
+		double mutationRate = Double.parseDouble(args[11]);
 		if (mutation !=0)
 			System.out.println("MUTATION RATE: "+mutationRate);
-		int tournWindow = Integer.parseInt(args[11]);
+		int tournWindow = Integer.parseInt(args[12]);
 		System.out.println("TOURN.WINDOW?: "+tournWindow);
-		int debug = Integer.parseInt(args[12]);
+		int debug = Integer.parseInt(args[13]);
 		System.out.println("DEBUG?: "+debug);
-		int endCriterial = Integer.parseInt(args[13]);
+		int endCriterial = Integer.parseInt(args[14]);
 		System.out.println("END CRITERIAL: "+endCriterial);
-		String userDir = args[14];
+		String userDir = args[15];
 		System.out.println("USER DIR: "+userDir);
-		launch(problemName, reducerName, numReducers, numIterations, sizePop, geneNumber, chromKind, crossProb, boolElit, mutation, mutationRate, tournWindow, debug, endCriterial, userDir);
+		launch(problemName, reducerName, xmlName, numReducers, numIterations, sizePop, geneNumber, chromClass, crossProb, boolElit, mutation, mutationRate, tournWindow, debug, endCriterial, userDir);
 		return 0;
 	}
 	/**

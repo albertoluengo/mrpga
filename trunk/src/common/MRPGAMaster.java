@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.Job;
@@ -51,7 +52,7 @@ public class MRPGAMaster extends Configured implements Tool {
 			System.err.println("MRPGAMASTER: Error instanciando el trabajo...");
 			System.exit(0);
 		}
-		job.setJarByClass(common.MRPGAMaster.class);
+		
 		job.setNumReduceTasks(numReducers);
 		job.setMapperClass(problemMapperClass);
 		job.setReducerClass(problemReducerClass);
@@ -61,6 +62,11 @@ public class MRPGAMaster extends Configured implements Tool {
 	    job.setOutputValueClass(DoubleWritable.class);
 	    job.setPartitionerClass(common.RandomDoublePartitioner.class);
 	    job.setJobName("mrpga-"+problemReducerClass+iter);
+	    //Aunque este 'deprecated' esta linea es necesaria para utilizar las clases hija
+	    //si se empaqueta la aplicación como un JAR
+	    ((JobConf) job.getConfiguration()).setJar("mrpga_cluster.jar");
+
+	    
 			
 		/*Especificamos los directorios de entrada y salida que van a utilizarse
 	     */

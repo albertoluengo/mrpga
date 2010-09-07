@@ -1,15 +1,10 @@
 package problems;
 
-import java.util.Date;
 import java.util.Hashtable;
 
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import common.MRPGAMapper;
-import common.MRPGAReducer;
 
 /**
  * Clase que implementa todas las funciones necesarias de un nodo <code>Mapper</code> 
@@ -19,8 +14,6 @@ import common.MRPGAReducer;
  * @author Alberto Luengo Cabanillas
  */
 public class TargetPhraseMapper extends MRPGAMapper {
-	
-	private static final Log LOG = LogFactory.getLog(TargetPhraseMapper.class.getName());
 	
 	public TargetPhraseMapper(){
 		super();
@@ -39,8 +32,8 @@ public class TargetPhraseMapper extends MRPGAMapper {
 	 * @param individual Individuo a procesar
 	 * @return Valor num&#233;rico con precisi&#243;n <code>double</code> que representa el fitness del individuo.
 	 */
-	public DoubleWritable calculateFitness(Hashtable configParams, Hashtable generalParams, Text individual) {
-		String targetPhrase =(String)configParams.get("targetPhrase");
+	public DoubleWritable calculateFitness(Hashtable problemParams, Hashtable generalParams, Text individual) {
+		String targetPhrase =(String)problemParams.get("targetPhrase");
 		int targetSize=targetPhrase.length();
 		String textAsString = individual.toString();
 		int fitness=0;
