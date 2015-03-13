@@ -1,0 +1,1 @@
+Este PFC de Ingeniería Informática de la Facultad de Informática de la Universidad de A Coruña aborda el desarrollo de un entorno genérico en Java basado en MapReduce para la ejecución distribuida de algoritmos genéticos paralelos.
